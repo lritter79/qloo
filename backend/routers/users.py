@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.models import User, Login
+from app.models import RefreshToken, User, Login
 from db.supabase import create_supabase_client
 from fastapi.security import OAuth2PasswordBearer
 from typing import Annotated
@@ -72,7 +72,7 @@ def login(login: Login):
 
         # Check if user was added
         if response:
-            return {"message": "User login successfully", "token": response}
+            return response
         else:
             return {"message": "User login failed"}
     except Exception as e:
@@ -85,7 +85,19 @@ def get_user(userData: Annotated[dict, Depends(get_user_logged_in)]):
     return userData['user']
 
 
-@router.put("/users/logout")
+@router.get("/users/refresh")
+def refresh(refreshToken: RefreshToken, userData: Annotated[dict, Depends(get_user_logged_in)]):
+    try:
+
+        response = supabase.auth.refresh_session(refreshToken.refreshToken)
+        return response
+
+    except Exception as e:
+        print("Error: ", e)
+        return {"message": f"Refresh failed: {e}"}
+
+
+@router.post("/users/logout")
 def logout(userData: Annotated[dict, Depends(get_user_logged_in)]):
 
     try:

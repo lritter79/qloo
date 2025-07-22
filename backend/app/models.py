@@ -10,3 +10,7 @@ class User(BaseModel):
 class Login(BaseModel):
     email: str
     password: str
+
+
+class RefreshToken(BaseModel):
+    refreshToken: str
