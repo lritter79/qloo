@@ -1,6 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException, status
 from app.models import User, Login
 from db.supabase import create_supabase_client
+from fastapi.security import OAuth2PasswordBearer
+from typing import Annotated
 
 router = APIRouter()
 
@@ -8,9 +10,29 @@ router = APIRouter()
 supabase = create_supabase_client()
 
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+def get_user_logged_in(token: Annotated[str, Depends(oauth2_scheme)]):
+    try:
+        response = supabase.auth.get_user(token)
+        if response is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials",
+                headers={"WWW-Authenticate": "Bearer"})
+        else:
+            return {'user': response.user, 'token': token}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Get user failed: {e}",
+            headers={"WWW-Authenticate": "Bearer"})
+
+
 # Create a new user
 
-@router.post("/user/sign-up")
+@router.post("/users/sign-up")
 def create_user(user: User):
     try:
         user_email = user.email.lower()
@@ -35,8 +57,8 @@ def create_user(user: User):
         return {"message": f"User creation failed: {e}"}
 
 
-@router.post("/user/login")
-def create_user(login: Login):
+@router.post("/users/login")
+def login(login: Login):
     try:
         # Check if user already exists
 
@@ -50,7 +72,7 @@ def create_user(login: Login):
 
         # Check if user was added
         if response:
-            return {"message": "User login successfully"}
+            return {"message": "User login successfully", "token": response}
         else:
             return {"message": "User login failed"}
     except Exception as e:
@@ -58,17 +80,19 @@ def create_user(login: Login):
         return {"message": f"User login failed: {e}"}
 
 
-@router.post("/user/logout")
-def logout():
+@router.get("/users/me")
+def get_user(userData: Annotated[dict, Depends(get_user_logged_in)]):
+    return userData['user']
+
+
+@router.put("/users/logout")
+def logout(userData: Annotated[dict, Depends(get_user_logged_in)]):
+
     try:
 
-        response = supabase.auth.sign_out()
+        response = supabase.auth.admin.sign_out(userData['token'])
+        return "Logout Successful"
 
-        # Check if user was added
-        if response:
-            return {"message": "User logout successfully"}
-        else:
-            return {"message": "User login failed"}
     except Exception as e:
         print("Error: ", e)
         return {"message": f"User logout failed: {e}"}
