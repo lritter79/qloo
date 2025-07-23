@@ -20,15 +20,40 @@ class SortTypes(str, Enum):
 
 
 @router.get("/qloo/music-recs/albums/")
-def get_music_recommendations_album(genre: str, influenced_by_artist_name: str, influence_genre: str, jwt: Annotated[dict, Depends(validate_jwt)]):
+def get_music_recommendations_album(
+    jwt: Annotated[dict, Depends(validate_jwt)],
+    tag_genre: Optional[List[str]] = Query(default=None),
+
+):
     try:
-        headers = {"accept": "application/json", 'x-api-key': key}
+        headers = {
+            "accept": "application/json",
+            "x-api-key": key
+        }
+
+        # URN prefix map for album-relevant tag filters
+        tag_prefix_map = {
+            "tag_genre": "urn:tag:genre",
+
+        }
+
+        tag_filters = []
+        func_locals = locals()
+
+        for param_name, urn_prefix in tag_prefix_map.items():
+            values = func_locals.get(param_name)
+            if values:
+                tag_filters.extend([f"{urn_prefix}:{v}" for v in values])
+
         params = {
-            "filter.tags": f"urn:tag:genre:{genre}",
+            "filter.tags": ",".join(tag_filters),
             "filter.type": "urn:entity:album"
         }
+
         response = requests.get(url, headers=headers, params=params)
-        return response.json()["results"]
+        response.raise_for_status()
+        return response.json().get("results", [])
+
     except Exception as e:
         print("Error: ", e)
         return {"message": "failed"}
