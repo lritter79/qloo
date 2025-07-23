@@ -1,7 +1,7 @@
 from enum import Enum
 from fastapi import APIRouter, Depends, Query
 from typing import Annotated, Optional, List
-from .users import get_user_logged_in
+from .users import validate_jwt
 import requests
 import os
 from requests.auth import HTTPBasicAuth
@@ -20,7 +20,7 @@ class SortTypes(str, Enum):
 
 
 @router.get("/qloo/music-recs/albums/")
-def get_music_recommendations_album(genre: str, influenced_by_artist_name: str, influence_genre: str, user: Annotated[str, Depends(get_user_logged_in)]):
+def get_music_recommendations_album(genre: str, influenced_by_artist_name: str, influence_genre: str, jwt: Annotated[dict, Depends(validate_jwt)]):
     try:
         headers = {"accept": "application/json", 'x-api-key': key}
         params = {
@@ -36,7 +36,7 @@ def get_music_recommendations_album(genre: str, influenced_by_artist_name: str, 
 
 @router.get("/qloo/music-recs/artists")
 def get_music_recommendations_artist(
-    user: Annotated[str, Depends(get_user_logged_in)],
+    jwt: Annotated[dict, Depends(validate_jwt)],
     genre: Optional[List[str]] = Query(default=None),
     influenced_by_artist_name: Optional[List[str]] = Query(default=None),
     influence_genre: Optional[List[str]] = Query(default=None),
