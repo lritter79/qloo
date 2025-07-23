@@ -1,7 +1,6 @@
 from typing import Any, List, Optional
 import httpx
 
-
 class QlooService:
     _key: str
     _url_search: str
@@ -19,9 +18,6 @@ class QlooService:
 
             # Mapping query param names to their URN tag prefix
             tag_prefix_map = {
-                "genre": "urn:tag:genre",
-                "influenced_by_artist_name": "urn:tag:influenced_by:qloo",
-                "influence_genre": "urn:tag:influence:qloo",
                 "tag_genre": "urn:tag:genre",
                 "tag_audience_qloo": "urn:tag:audience:qloo",
                 "tag_music_qloo": "urn:tag:music:qloo",

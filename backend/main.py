@@ -1,6 +1,6 @@
 import os
 from fastapi import FastAPI
-from routers import users, qloo
+from routers import users, qloo, chat
 from fastapi.middleware.cors import CORSMiddleware
 
 env = os.getenv("ENVIRONMENT", default="development")
@@ -28,6 +28,7 @@ app = FastAPI()
 
 app.include_router(users.router)
 app.include_router(qloo.router)
+app.include_router(chat.router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
