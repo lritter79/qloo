@@ -1,5 +1,19 @@
+from enum import Enum
 import httpx
 from typing import Any
+
+
+class CategoryEnum(str, Enum):
+    ARTIST = "artist"
+    BOOK = "book"
+    BRAND = "brand"
+    DESTINATION = "destination"
+    MOVIE = "movie"
+    PERSON = "person"
+    PLACE = "place"
+    PODCAST = "podcast"
+    TV_SHOW = "tv_show"
+    VIDEO_GAME = "video_game"
 
 
 class QlooToolHandler:
@@ -18,7 +32,7 @@ class QlooToolHandler:
                     "properties": {
                         "qlooParams": {
                             "type": "object",
-                            "description": "Dictionary of optional music tag filters",
+                            "description": "Dictionary of optional music tag filters. Note about the 'tag_artist_qloo' parameter, it applies to the vocal range of given artist or singer in a band, not what the artist is called or what they sound like.",
                             "properties": {
                                 tag: {
                                     "type": "array",
@@ -44,7 +58,7 @@ class QlooToolHandler:
             return await self.get_music_recommendations_artist(arguments["qlooParams"])
         return {"error": f"No handler for {function_name}"}
 
-    async def get_music_recommendations_artist(self, qlooParams: dict[str, Any]):
+    async def get_music_recommendations_artist(self, qlooParams: dict[str, Any], take=5):
         headers = {
             "accept": "application/json",
             "x-api-key": self._key
@@ -73,7 +87,28 @@ class QlooToolHandler:
 
         params = {
             "filter.tags": ",".join(tag_filters),
-            "filter.type": "urn:entity:artist"
+            "filter.type": "urn:entity:artist",
+            "take": take
+        }
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(self._url_search, headers=headers, params=params)
+                response.raise_for_status()
+                return response.json().get("results", [])
+        except Exception as e:
+            return {"error": str(e)}
+
+    async def get_qloo_entity(self, filterType: CategoryEnum, query: str, take=1):
+        headers = {
+            "accept": "application/json",
+            "x-api-key": self._key
+        }
+
+        params = {
+            "filter.type": f"urn:entity:{filterType.value}",
+            "query": query,
+            "take": take
         }
 
         try:
