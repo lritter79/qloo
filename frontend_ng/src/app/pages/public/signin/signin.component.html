@@ -4,6 +4,7 @@
     <label for="password">Password: </label>
     <input id="password" type="password" formControlName="password">
     <p>Form Status: {{ signinForm.status }}</p>
+    <p-button label="Check" />
 
-    <button type="submit" [disabled]="!signinForm.valid">Submit</button>
+    <!-- <button type="submit" [disabled]="!signinForm.valid">Submit</button> -->
 </form>

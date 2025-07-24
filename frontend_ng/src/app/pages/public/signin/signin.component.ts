@@ -8,10 +8,11 @@ import {
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../auth/auth.service';
+import { ButtonModule } from 'primeng/button';
 
 @Component({
   selector: 'app-signin',
-  imports: [ReactiveFormsModule, CommonModule],
+  imports: [ReactiveFormsModule, CommonModule, ButtonModule],
   templateUrl: './signin.component.html',
   styleUrl: './signin.component.scss',
 })

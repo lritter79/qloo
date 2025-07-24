@@ -1,11 +1,10 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
-import { AppBar } from "../app-bar/app-bar.component";
 
 @Component({
   selector: 'app-auth-layout',
-  imports: [RouterOutlet, AppBar],
+  imports: [RouterOutlet],
   templateUrl: './auth-layout.component.html',
   styleUrl: './auth-layout.component.scss',
 })
