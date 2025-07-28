@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import Annotated, Any
+from typing import Annotated, Any, List
 from app.models import Chat
 from app.services.openAI import OpenAIService
 from db.supabase import create_supabase_client
@@ -24,6 +24,22 @@ class PromptRequest(BaseModel):
     parent_id: str | None
 
 
+@router.get("/chats")
+async def get_chats(jwt: Annotated[dict, Depends(validate_jwt)]) -> List[Chat]:
+    try:
+        supabase = create_supabase_client()
+
+        response = (
+            supabase.table("chats")
+            .select("*")
+            .filter("user_id", jwt["sub"])
+            .execute()
+        )
+        return response
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error))
+
+
 @router.post("/chat")
 async def add_chat(jwt: Annotated[dict, Depends(validate_jwt)]) -> Any:
     try:
@@ -39,11 +55,11 @@ async def add_chat(jwt: Annotated[dict, Depends(validate_jwt)]) -> Any:
             .execute()
         )
         return Chat(user_id=response.data[0]["user_id"], created_at=response.data[0]["created_at"], id=response.data[0]["id"])
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error))
 
 
-@router.put("/chat/message")
+@router.post("/chat/{id}/message")
 async def add_message_with_openai(request: PromptRequest, jwt: Annotated[dict, Depends(validate_jwt)]) -> Any:
     try:
         supabase = create_supabase_client()
@@ -59,5 +75,38 @@ async def add_message_with_openai(request: PromptRequest, jwt: Annotated[dict, D
             .execute()
         )
         return {"response": result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error))
+
+
+@router.get("/chat/{id}/messages")
+async def get_messages(id: str, jwt: Annotated[dict, Depends(validate_jwt)]) -> List[dict]:
+    try:
+        supabase = create_supabase_client()
+        response = (
+            supabase.table("messages")
+            .select("*")
+            .filter("chat_id", id)
+            .execute()
+        )
+        return response.data
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error))
+
+
+@router.delete("/chat/{id}")
+async def delete_chat(id: str, jwt: Annotated[dict, Depends(validate_jwt)]) -> Any:
+    try:
+        supabase = create_supabase_client()
+        # Delete messages associated with the chat
+        supabase.table("messages").delete().eq("chat_id", id).execute()
+        # Delete the chat itself
+        response = (
+            supabase.table("chats")
+            .delete()
+            .eq("id", id)
+            .execute()
+        )
+        return {"message": "Chat deleted successfully"}
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error))

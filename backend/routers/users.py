@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from app.models import RefreshToken, User, Login
-from db.supabase import create_supabase_client
+from db.supabase import create_supabase_client, create_supabase_client_admin
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from typing import Annotated
 import jwt
@@ -12,6 +12,8 @@ secret: str = os.environ.get("SUPABASE_JWT_SECRET")
 
 # Initialize supabase client
 supabase = create_supabase_client()
+
+admin_supabase = create_supabase_client_admin()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -81,7 +83,7 @@ def create_user(user: User):
 
         # Check if user was added
         if response:
-            return {"message": "User created successfully"}
+            return response
         else:
             return {"message": "User creation failed"}
     except Exception as e:
@@ -129,6 +131,18 @@ def refresh(refreshToken: RefreshToken, jwt: Annotated[dict, Depends(validate_jw
         return {"message": f"Refresh failed: {e}"}
 
 
+@router.delete("/user")
+def delete_user(jwt: Annotated[dict, Depends(validate_jwt)]):
+    try:
+        # Delete user from users table
+
+        admin_supabase.delete_user(jwt["sub"])
+        return {"message": "User deleted successfully"}
+    except Exception as e:
+        print("Error: ", e)
+        raise HTTPException(status_code=500, detail=e.message)
+
+
 @router.post("/users/logout")
 def logout(token: Annotated[str, Depends(oauth2_scheme)]):
 
@@ -140,3 +154,4 @@ def logout(token: Annotated[str, Depends(oauth2_scheme)]):
     except Exception as e:
         print("Error: ", e)
         return {"message": f"User logout failed: {e}"}
+# delete user by id
