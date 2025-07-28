@@ -1,0 +1,98 @@
+<div class="chatbot-container">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <p-button 
+        label="New Chat" 
+        icon="pi pi-plus" 
+        (onClick)="createNewChat()"
+        class="new-chat-btn">
+      </p-button>
+    </div>
+    
+    <div class="chat-list">
+      <div 
+        *ngFor="let chat of chats" 
+        class="chat-item"
+        [class.active]="currentChat?.id === chat.id"
+        (click)="selectChat(chat)">
+        <div class="chat-item-content">
+          <div class="chat-date">{{ formatDate(chat.date) }}</div>
+          <div class="message-count">{{ chat.messages.length }} messages</div>
+        </div>
+        <p-button 
+          icon="pi pi-trash" 
+          class="delete-btn p-button-text p-button-danger"
+          (onClick)="deleteChat(chat, $event)"
+          pTooltip="Delete chat">
+        </p-button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Chat Area -->
+  <div class="chat-main">
+    <!-- Messages Display -->
+    <div class="messages-container" #messagesContainer>
+      <div *ngIf="!currentChat" class="no-chat-selected">
+        <i class="pi pi-comments" style="font-size: 3rem; color: #ccc;"></i>
+        <p>Select a chat or create a new one to start messaging</p>
+      </div>
+
+      <div *ngIf="currentChat" class="messages">
+        <div 
+          *ngFor="let message of currentChat.messages" 
+          class="message-wrapper"
+          [class.user-message]="message.type === 'user'"
+          [class.api-message]="message.type === 'api'">
+          
+          <div class="message-bubble">
+            <div class="message-content">{{ message.content }}</div>
+            <div class="message-time">{{ formatMessageTime(message.timestamp) }}</div>
+          </div>
+        </div>
+
+        <!-- Loading indicator -->
+        <div *ngIf="isLoading" class="message-wrapper api-message">
+          <div class="message-bubble loading">
+            <p-progressSpinner 
+              [style]="{'width': '20px', 'height': '20px'}" 
+              strokeWidth="8">
+            </p-progressSpinner>
+            <span class="loading-text">Thinking...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="input-container">
+      <div class="input-wrapper">
+        <textarea 
+           pTextarea 
+           [(ngModel)]="currentMessage"
+          (keypress)="onKeyPress($event)"
+          maxlength=500
+          placeholder="Type your message here..."
+          class="message-input"
+          rows="3"
+          [disabled]="isLoading">
+        </textarea>
+        
+        <div class="input-footer">
+          <div class="character-count">
+            {{ currentMessage.length }}/500 
+          </div>
+          
+          <p-button 
+            label="Send" 
+            icon="pi pi-send" 
+            (onClick)="sendMessage()"
+            [disabled]="!currentMessage.trim() || isLoading"
+            class="send-btn">
+          </p-button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

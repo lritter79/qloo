@@ -1,0 +1,65 @@
+<div class="signup-wrapper">
+  <p-card header="Create Account">
+    <form [formGroup]="signupForm" (ngSubmit)="onSubmit()" class="signup-form">
+      <div class="form-group">
+        <label for="name">Name</label>
+        <input pInputText id="name" formControlName="name" />
+        <p-message
+          *ngIf="signupForm.get('name')?.invalid && signupForm.get('name')?.touched"
+          severity="error"
+          text="Name is required"
+        ></p-message>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input pInputText type="email" id="email" formControlName="email" />
+        <p-message
+          *ngIf="signupForm.get('email')?.hasError('email') && signupForm.get('email')?.touched"
+          severity="error"
+          text="Invalid email"
+        ></p-message>
+      </div>
+
+      <div class="form-group">
+        <label for="confirmEmail">Confirm Email</label>
+        <input pInputText type="email" id="confirmEmail" formControlName="confirmEmail" />
+        <p-message
+          *ngIf="signupForm.errors?.['EmailNoMatch']"
+          severity="error"
+          text="Emails do not match"
+        ></p-message>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <p-password id="password" formControlName="password" toggleMask />
+        <p-message
+          *ngIf="signupForm.get('password')?.hasError('required') && signupForm.get('password')?.touched"
+          severity="error"
+          text="Password is required"
+        ></p-message>
+      </div>
+
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password</label>
+        <p-password id="confirmPassword" formControlName="confirmPassword" toggleMask />
+        <p-message
+          *ngIf="signupForm.errors?.['PasswordNoMatch']"
+          severity="error"
+          text="Passwords do not match"
+        ></p-message>
+      </div>
+
+      <button
+        pButton
+        type="submit"
+        label="Submit"
+        [disabled]="signupForm.invalid || isLoading"
+        [loading]="isLoading"
+        class="submit-btn"
+      ></button>
+    </form>
+  </p-card>
+  <p-toast></p-toast>
+</div>

@@ -3,7 +3,7 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { AuthLayoutComponent } from './layouts/auth-layout/auth-layout.component';
 import { PublicLayoutComponent } from './layouts/public-layout/public-layout.component';
-import { AuthGuard } from './auth/auth.guard';
+import { AuthGuard } from './services/auth/auth.guard';
 
 export const routes: Routes = [
   {
@@ -37,6 +37,13 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/auth/dashboard/dashboard.component').then(
             (m) => m.DashboardComponent
+          ),
+      },
+      {
+        path: 'chat',
+        loadComponent: () =>
+          import('./pages/auth/chat/chat.component').then(
+            (m) => m.ChatbotComponent
           ),
       },
     ],

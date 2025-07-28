@@ -1,0 +1,21 @@
+.signup-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--surface-ground);
+    width:100%;
+  .signup-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .submit-btn {
+      align-self: flex-end;
+    }
+  }
+}

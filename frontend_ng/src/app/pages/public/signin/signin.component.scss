@@ -1,0 +1,21 @@
+.signin-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--surface-ground);
+
+  .signin-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .login-btn {
+      align-self: flex-end;
+    }
+  }
+}

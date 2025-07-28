@@ -1,0 +1,154 @@
+// auth-layout.component.scss
+
+.auth-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--surface-ground);
+  color: var(--text-color);
+  transition: background-color 0.3s ease, color 0.3s ease;
+
+  .main-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    border-bottom: 1px solid var(--surface-border);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background-color: var(--surface-section) !important;
+    
+    .app-title {
+      margin: 0;
+      color: var(--primary-color);
+      font-weight: 600;
+      font-size: 1.5rem;
+    }
+
+    .nav-text {
+      font-weight: 500;
+      color: var(--text-color-secondary);
+    }
+
+    .p-toolbar-group-end {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+
+      .theme-toggle {
+        margin-right: 0.5rem;
+      }
+
+    }
+  }
+
+  .main-content {
+    flex: 1;
+    padding: 2rem 1rem 1rem 1rem; // Added top padding to prevent overlap
+    background-color: var(--surface-ground);
+    transition: background-color 0.3s ease;
+    min-height: calc(100vh - 70px); // Account for toolbar height
+  }
+}
+
+// Theme-specific styles with higher specificity
+:host ::ng-deep {
+  .light-theme {
+    --primary-color: #007ad9;
+    --surface-ground: #ffffff;
+    --surface-section: #f8f9fa;
+    --surface-border: #dee2e6;
+    --text-color: #212529;
+    --text-color-secondary: #6c757d;
+
+    .p-toolbar {
+      background: var(--surface-section) !important;
+      border-color: var(--surface-border) !important;
+      color: var(--text-color) !important;
+    }
+  }
+
+  .dark-theme {
+    --primary-color: #4dabf7;
+    --surface-ground: #121212;
+    --surface-section: #1e1e1e;
+    --surface-border: #404040;
+    --text-color: #ffffff;
+    --text-color-secondary: #a0a0a0;
+
+    // Force dark theme styles with higher specificity
+    .p-toolbar {
+      background: var(--surface-section) !important;
+      border-color: var(--surface-border) !important;
+      color: var(--text-color) !important;
+    }
+
+    .p-button.p-button-outlined {
+      border-color: var(--surface-border) !important;
+      color: var(--text-color) !important;
+      background: transparent !important;
+
+      &:hover:not(:disabled) {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        border-color: var(--text-color) !important;
+      }
+
+      &.p-button-danger {
+        border-color: #ff6b6b !important;
+        color: #ff6b6b !important;
+
+        &:hover:not(:disabled) {
+          background-color: rgba(255, 107, 107, 0.1) !important;
+        }
+      }
+
+      &.p-button-secondary {
+        border-color: var(--text-color-secondary) !important;
+        color: var(--text-color-secondary) !important;
+
+        &:hover:not(:disabled) {
+          background-color: rgba(160, 160, 160, 0.1) !important;
+        }
+      }
+    }
+
+    // Override PrimeNG toast for dark theme
+    .p-toast .p-toast-message {
+      background: var(--surface-section) !important;
+      border: 1px solid var(--surface-border) !important;
+      
+      .p-toast-message-content {
+        color: var(--text-color) !important;
+      }
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .auth-layout {
+    .main-toolbar {
+      .p-toolbar-group-center {
+        display: none; // Hide nav text on mobile
+      }
+
+      .p-toolbar-group-end {
+        flex-direction: column;
+        gap: 0.25rem;
+
+        .theme-toggle,
+        .logout-btn {
+          width: 100%;
+          margin: 0;
+        }
+      }
+    }
+
+    .main-content {
+      padding: 0.5rem;
+    }
+  }
+}
+
+// Animation for smooth theme transitions
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}

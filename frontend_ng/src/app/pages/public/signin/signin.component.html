@@ -1,10 +1,35 @@
-<form [formGroup]="signinForm" (ngSubmit)="onSubmit()">
-    <label for="email">Email: </label>
-    <input id="email" type="email" formControlName="email" email>
-    <label for="password">Password: </label>
-    <input id="password" type="password" formControlName="password">
-    <p>Form Status: {{ signinForm.status }}</p>
-    <p-button label="Check" />
+<div class="signin-wrapper">
+  <p-card header="Sign In">
+    <form [formGroup]="signinForm" (ngSubmit)="onSubmit()" class="signin-form">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input pInputText type="email" id="email" formControlName="email" />
+        <p-message
+          *ngIf="signinForm.get('email')?.hasError('email') && signinForm.get('email')?.touched"
+          severity="error"
+          text="Invalid email"
+        ></p-message>
+      </div>
 
-    <!-- <button type="submit" [disabled]="!signinForm.valid">Submit</button> -->
-</form>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <p-password id="password" formControlName="password" toggleMask />
+        <p-message
+          *ngIf="signinForm.get('password')?.hasError('required') && signinForm.get('password')?.touched"
+          severity="error"
+          text="Password is required"
+        ></p-message>
+      </div>
+
+      <button
+        pButton
+        type="submit"
+        label="Login"
+        [loading]="isLoading"
+        [disabled]="signinForm.invalid || isLoading"
+        class="login-btn"
+      ></button>
+    </form>
+  </p-card>
+  <p-toast></p-toast>
+</div>

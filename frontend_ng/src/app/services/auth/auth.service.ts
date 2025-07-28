@@ -1,10 +1,10 @@
 // auth.service.ts
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { BehaviorSubject, Observable, throwError, timer } from 'rxjs';
+import { BehaviorSubject, Observable, Subject, throwError, timer } from 'rxjs';
 import { catchError, tap, switchMap, filter, take } from 'rxjs/operators';
 import { Router } from '@angular/router';
-import { environment } from '../../environments/environment';
+import { environment } from '../../../environments/environment';
 
 export interface User {
   id: string;
@@ -80,11 +80,13 @@ export class AuthService {
   // Auth state management
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
+  private authError = new Subject<string | null>();
   private tokenRefreshTimer: any;
 
   // Public observables
   currentUser$ = this.currentUserSubject.asObservable();
   isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
+  authError$ = this.authError.asObservable();
 
   constructor() {
     // Check authentication status on service initialization
@@ -227,6 +229,10 @@ export class AuthService {
     return sessionStorage.getItem(this.REFRESH_TOKEN_KEY);
   }
 
+  clearAuthError() {
+    this.authError.next(null);
+  }
+
   /**
    * Initialize authentication state from session storage
    */
@@ -361,7 +367,6 @@ export class AuthService {
         });
       });
     }
-    
   }
 
   /**
@@ -380,28 +385,26 @@ export class AuthService {
   private handleError = (error: HttpErrorResponse) => {
     let errorMessage = 'An error occurred';
 
-    if (error.error instanceof ErrorEvent) {
-      // Client-side error
-      errorMessage = error.error.message;
-    } else {
-      // Server-side error
-      switch (error.status) {
-        case 401:
-          errorMessage = 'Invalid credentials';
-          // Clear stored auth data on 401
-          this.handleLogout();
-          break;
-        case 403:
-          errorMessage = 'Access forbidden';
-          break;
-        case 500:
-          errorMessage = 'Server error';
-          break;
-        default:
-          errorMessage = error.error?.message || 'Unknown error';
-      }
+    // Server-side error
+    switch (error?.status) {
+      case 401:
+        errorMessage = 'Invalid credentials';
+        // Clear stored auth data on 401
+        this.handleLogout();
+        break;
+      case 403:
+        errorMessage = 'Access forbidden';
+        break;
+      case 422:
+        errorMessage = 'A user with this email already signed up';
+        break;
+      case 500:
+        errorMessage = 'Server error';
+        break;
+      default:
+        errorMessage = error.error?.message || 'Unknown error';
     }
-
+    this.authError.next(errorMessage);
     return throwError(() => new Error(errorMessage));
   };
 }
