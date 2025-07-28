@@ -61,6 +61,13 @@ export interface SignupCredentials {
   name?: string;
 }
 
+// New interface for password reset auto-login
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -91,6 +98,71 @@ export class AuthService {
   constructor() {
     // Check authentication status on service initialization
     this.initializeFromStorage();
+  }
+
+  resetPassword(arg0: { email: string }): Observable<any> {
+    return this.http.post(`${this.API_URL}/user/forgot-password`, arg0);
+  }
+
+  updatePassword(arg0: {
+    accessToken: string;
+    password: string;
+  }): Observable<any> {
+    return this.http.post(`${this.API_URL}/user/update-password`, arg0);
+  }
+
+  /**
+   * Set authentication tokens after password reset
+   * This allows auto-login after successful password update
+   */
+  setAuthTokens(tokens: AuthTokens): Observable<User> {
+    // Store tokens in session storage
+    sessionStorage.setItem(this.ACCESS_TOKEN_KEY, tokens.accessToken);
+    sessionStorage.setItem(this.REFRESH_TOKEN_KEY, tokens.refreshToken);
+    sessionStorage.setItem(this.EXPIRES_AT_KEY, tokens.expiresAt.toString());
+
+    // Update auth state
+    this.isAuthenticatedSubject.next(true);
+
+    // Fetch user data with the new token to complete the auth state
+    return this.http
+      .get<{ user: User }>(`${this.API_URL}/users/me`, {
+        headers: {
+          Authorization: `Bearer ${tokens.accessToken}`,
+        },
+      })
+      .pipe(
+        tap((response) => {
+          // Store user data
+          sessionStorage.setItem(this.USER_KEY, JSON.stringify(response.user));
+
+          // Create a mock session object for consistency
+          const session: Session = {
+            provider_token: null,
+            provider_refresh_token: null,
+            access_token: tokens.accessToken,
+            refresh_token: tokens.refreshToken,
+            expires_in: Math.floor(
+              (tokens.expiresAt * 1000 - Date.now()) / 1000
+            ),
+            expires_at: tokens.expiresAt,
+            token_type: 'bearer',
+            user: response.user,
+          };
+          sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
+
+          // Update reactive state
+          this.currentUserSubject.next(response.user);
+          this.scheduleTokenRefresh();
+        }),
+        switchMap((response) => [response.user]),
+        catchError((error) => {
+          // If fetching user fails, clear the tokens and throw error
+          this.clearStorage();
+          this.isAuthenticatedSubject.next(false);
+          return throwError(() => error);
+        })
+      );
   }
 
   /**

@@ -25,6 +25,13 @@ export const routes: Routes = [
             (m) => m.SignupComponent
           ),
       },
+      {
+        path: 'forgot-password',
+        loadComponent: () =>
+          import(
+            './pages/public/forgot-password/forgot-password.component'
+          ).then((m) => m.ForgotPasswordComponent),
+      },
     ],
   },
   {
@@ -51,6 +58,13 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/auth/settings/settings.component').then(
             (m) => m.SettingsComponent
+          ),
+      },
+      {
+        path: 'reset-password',
+        loadComponent: () =>
+          import('./pages/auth/reset-password/reset-password.component').then(
+            (m) => m.ResetPasswordComponent
           ),
       },
     ],

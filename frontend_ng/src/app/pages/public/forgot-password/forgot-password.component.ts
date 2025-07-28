@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import {
   FormControl,
   ReactiveFormsModule,
@@ -12,7 +12,6 @@ import { AuthService } from '../../../services/auth/auth.service';
 
 // PrimeNG
 import { InputTextModule } from 'primeng/inputtext';
-import { PasswordModule } from 'primeng/password';
 import { ButtonModule } from 'primeng/button';
 import { MessageModule } from 'primeng/message';
 import { ToastModule } from 'primeng/toast';
@@ -20,65 +19,70 @@ import { CardModule } from 'primeng/card';
 import { MessageService } from 'primeng/api';
 
 @Component({
-  selector: 'app-signin',
+  selector: 'app-forgot-password',
   standalone: true,
   imports: [
     CommonModule,
     ReactiveFormsModule,
     InputTextModule,
-    PasswordModule,
     ButtonModule,
     MessageModule,
     ToastModule,
     CardModule,
   ],
   providers: [MessageService],
-  templateUrl: './signin.component.html',
-  styleUrl: './signin.component.scss',
+  templateUrl: './forgot-password.component.html',
+  styleUrl: './forgot-password.component.scss',
 })
-export class SigninComponent {
-  signinForm = new FormGroup({
+export class ForgotPasswordComponent {
+  passwordResetForm = new FormGroup({
     email: new FormControl('', [Validators.required, Validators.email]),
-    password: new FormControl('', Validators.required),
   });
 
   isLoading = false;
+  isSubmitted = false;
 
   private authService = inject(AuthService);
   private router = inject(Router);
   private messageService = inject(MessageService);
 
-  navToForgotPassword() {
-    this.router.navigate(['/forgot-password']);
-  }
-
   onSubmit() {
-    if (this.signinForm.invalid) return;
+    if (this.passwordResetForm.invalid) return;
 
     this.isLoading = true;
 
     this.authService
-      .login({
-        email: this.signinForm.value.email ?? '',
-        password: this.signinForm.value.password ?? '',
+      .resetPassword({
+        email: this.passwordResetForm.value.email ?? '',
       })
       .subscribe({
         next: () => {
           this.isLoading = false;
+          this.isSubmitted = true;
           this.messageService.add({
             severity: 'success',
-            summary: 'Login Successful',
+            summary: 'Reset Email Sent',
+            detail: 'Please check your email for password reset instructions',
           });
-          this.router.navigate(['/chat']);
         },
-        error: (err) => {
+        error: (err: { message: any }) => {
           this.isLoading = false;
           this.messageService.add({
             severity: 'error',
-            summary: 'Login Failed',
-            detail: err.message || 'Please check your credentials',
+            summary: 'Reset Failed',
+            detail:
+              err.message || 'Unable to send reset email. Please try again.',
           });
         },
       });
+  }
+
+  goBackToSignin() {
+    this.router.navigate(['/signin']);
+  }
+
+  resendEmail() {
+    this.isSubmitted = false;
+    this.onSubmit();
   }
 }
