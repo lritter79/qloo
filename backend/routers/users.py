@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from app.models import RefreshToken, User, Login
+from app.models import ForgotPassword, RefreshToken, ResetPassword, User, Login
 from db.supabase import create_supabase_client, create_supabase_client_admin
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from typing import Annotated
@@ -132,29 +132,26 @@ def refresh(refreshToken: RefreshToken, jwt: Annotated[dict, Depends(validate_jw
         return {"message": f"Refresh failed: {e}"}
 
 
-@router.post("/user/reset-password")
-def reset_password(email: str):
+@router.post("/user/forgot-password")
+def reset_password(email: ForgotPassword):
     try:
         # Reset user password
-        response = supabase.auth.api.reset_password_for_email(email, {
+        supabase.auth.reset_password_for_email(email.email, {
             "redirect_to": f"{url}/reset-password"
         })
 
-        if response:
-            return {"message": "Password reset email sent successfully"}
-        else:
-            return {"message": "Failed to send password reset email"}
+        return {"message": "Password reset email sent successfully"}
     except Exception as e:
         print("Error: ", e)
         raise HTTPException(status_code=500, detail=e.message)
 
 
 @router.put("/user/update-password")
-def update_password(password: str, jwt: Annotated[dict, Depends(validate_jwt)]):
+def update_password(password: ResetPassword, jwt: Annotated[dict, Depends(validate_jwt)]):
     try:
         # Update user password
         response = supabase.auth.api.update_user(jwt["sub"], {
-            "password": password
+            "password": password.password
         })
 
         if response:
