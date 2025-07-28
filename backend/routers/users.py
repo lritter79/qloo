@@ -13,7 +13,6 @@ secret: str = os.environ.get("SUPABASE_JWT_SECRET")
 # Initialize supabase client
 supabase = create_supabase_client()
 
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
@@ -65,7 +64,7 @@ def get_user_logged_in(token: Annotated[str, Depends(oauth2_scheme)]):
 
 # Create a new user
 
-@router.post("/users/sign-up")
+@router.post("/users/signup")
 def create_user(user: User):
     try:
         user_email = user.email.lower()
@@ -73,7 +72,7 @@ def create_user(user: User):
         # Add user to users table
         response = supabase.auth.sign_up(
             {
-                "email": user.email,
+                "email": user_email,
                 "password": user.password,
                 "options": {"data": {"full_name": user.name}},
 
@@ -87,7 +86,7 @@ def create_user(user: User):
             return {"message": "User creation failed"}
     except Exception as e:
         print("Error: ", e)
-        return {"message": f"User creation failed: {e}"}
+        raise HTTPException(status_code=e.status, detail=e.message)
 
 
 @router.post("/users/login")
@@ -110,7 +109,7 @@ def login(login: Login):
             return {"message": "User login failed"}
     except Exception as e:
         print("Error: ", e)
-        return {"message": f"User login failed: {e}"}
+        raise HTTPException(status_code=500, detail=e.message)
 
 
 @router.get("/users/me")
