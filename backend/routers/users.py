@@ -9,6 +9,7 @@ import os
 router = APIRouter()
 
 secret: str = os.environ.get("SUPABASE_JWT_SECRET")
+url: str = os.environ.get("FRONTEND_URL", "http://localhost:4200")
 
 # Initialize supabase client
 supabase = create_supabase_client()
@@ -129,6 +130,40 @@ def refresh(refreshToken: RefreshToken, jwt: Annotated[dict, Depends(validate_jw
     except Exception as e:
         print("Error: ", e)
         return {"message": f"Refresh failed: {e}"}
+
+
+@router.post("/user/reset-password")
+def reset_password(email: str):
+    try:
+        # Reset user password
+        response = supabase.auth.api.reset_password_for_email(email, {
+            "redirect_to": f"{url}/reset-password"
+        })
+
+        if response:
+            return {"message": "Password reset email sent successfully"}
+        else:
+            return {"message": "Failed to send password reset email"}
+    except Exception as e:
+        print("Error: ", e)
+        raise HTTPException(status_code=500, detail=e.message)
+
+
+@router.put("/user/update-password")
+def update_password(password: str, jwt: Annotated[dict, Depends(validate_jwt)]):
+    try:
+        # Update user password
+        response = supabase.auth.api.update_user(jwt["sub"], {
+            "password": password
+        })
+
+        if response:
+            return {"message": "Password updated successfully"}
+        else:
+            return {"message": "Failed to update password"}
+    except Exception as e:
+        print("Error: ", e)
+        raise HTTPException(status_code=500, detail=e.message)
 
 
 @router.delete("/user")
