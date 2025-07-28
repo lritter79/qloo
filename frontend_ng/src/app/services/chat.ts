@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
+import id from '@angular/common/locales/id';
 
 export interface ChatMessage {
   id: string;
@@ -13,8 +14,7 @@ export interface ChatMessage {
 
 export interface Chat {
   id: string;
-  date: string;
-  messages: ChatMessage[];
+  createdAt: string;
 }
 
 export interface ApiRequest {
@@ -23,6 +23,12 @@ export interface ApiRequest {
 
 export interface ApiResponse {
   response: string;
+}
+
+export interface ChatApiResponse {
+  id: string;
+  createdAt: string;
+  userId: string;
 }
 
 @Injectable({
@@ -39,21 +45,26 @@ export class ChatService {
   sendMessage(prompt: string): Observable<ApiResponse> {
     const request: ApiRequest = { prompt };
     return this.http.post<ApiResponse>(
-      `${this.API_URL}/chat`,
+      `${this.API_URL}/chat/message`,
       request,
       this.getAuthHeaders()
     );
   }
 
   createNewChat(): string {
-    const chatId = this.generateId();
-    const newChat: Chat = {
-      id: chatId,
-      date: new Date().toISOString(),
-      messages: [],
-    };
-    this.chats.unshift(newChat);
-    this.currentChatId = chatId;
+    let chatId = '';
+    const chat = this.http
+      .post<ChatApiResponse>(`${this.API_URL}/chat`, {}, this.getAuthHeaders())
+      .pipe(
+        tap((chat) => {
+          this.chats.unshift(chat);
+          this.currentChatId = chat.id;
+
+          chatId = chat.id;
+        })
+      )
+      .subscribe();
+
     return chatId;
   }
 
@@ -72,7 +83,7 @@ export class ChatService {
 
     const chat = this.getCurrentChat();
     if (chat) {
-      chat.messages.push(message);
+      //chat.messages.push(message);
     }
 
     return messageId;
@@ -90,7 +101,7 @@ export class ChatService {
 
     const chat = this.getCurrentChat();
     if (chat) {
-      chat.messages.push(message);
+      //chat.messages.push(message);
     }
 
     return messageId;

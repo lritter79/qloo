@@ -107,6 +107,7 @@ export class ChatbotComponent implements OnInit, AfterViewChecked {
 
   formatDate(dateString: string): string {
     const date = new Date(dateString);
+    console.log(date);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   }
 

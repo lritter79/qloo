@@ -17,8 +17,8 @@
         [class.active]="currentChat?.id === chat.id"
         (click)="selectChat(chat)">
         <div class="chat-item-content">
-          <div class="chat-date">{{ formatDate(chat.date) }}</div>
-          <div class="message-count">{{ chat.messages.length }} messages</div>
+          <div class="chat-date">{{ formatDate(chat.createdAt) }}</div>
+          <!-- <div class="message-count">{{ chat.messages.length }} messages</div> -->
         </div>
         <p-button 
           icon="pi pi-trash" 
@@ -40,7 +40,7 @@
       </div>
 
       <div *ngIf="currentChat" class="messages">
-        <div 
+        <!-- <div 
           *ngFor="let message of currentChat.messages" 
           class="message-wrapper"
           [class.user-message]="message.type === 'user'"
@@ -50,7 +50,7 @@
             <div class="message-content">{{ message.content }}</div>
             <div class="message-time">{{ formatMessageTime(message.timestamp) }}</div>
           </div>
-        </div>
+        </div> -->
 
         <!-- Loading indicator -->
         <div *ngIf="isLoading" class="message-wrapper api-message">
