@@ -1,6 +1,6 @@
 .chatbot-container {
   display: flex;
-  height: 100vh;
+  height: calc(100vh - 70px);
   font-family: Arial, sans-serif;
 }
 

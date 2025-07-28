@@ -86,7 +86,7 @@ export class SignupComponent {
             severity: 'success',
             summary: 'Signup Successful',
           });
-          this.router.navigate(['/dashboard']);
+          this.router.navigate(['/chat']);
         },
         error: (error) => {
           this.isLoading = false;

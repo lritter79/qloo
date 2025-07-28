@@ -38,7 +38,7 @@ import { MessageService } from 'primeng/api';
 
       <div class="p-toolbar-group-end">
         <!-- Theme Toggle Button -->
-        <p-button
+        <!-- <p-button
           [icon]="currentTheme === 'light' ? 'pi pi-moon' : 'pi pi-sun'"
           [label]="currentTheme === 'light' ? 'Dark' : 'Light'"
           severity="secondary"
@@ -47,8 +47,16 @@ import { MessageService } from 'primeng/api';
           (click)="toggleTheme()"
           class="theme-toggle"
         >
+        </p-button> -->
+        <p-button
+          icon="pi pi-sign-out"
+          label="Settings"
+          [outlined]="true"
+          size="small"
+          (click)="navigateToSettings()"
+          class="logout-btn"
+        >
         </p-button>
-
         <!-- Logout Button -->
         <p-button
           icon="pi pi-sign-out"
@@ -138,6 +146,11 @@ export class AuthLayoutComponent implements OnInit {
     }
   }
 
+  //nav to settings page
+  navigateToSettings() {
+    this.router.navigate(['/settings']);
+  }
+
   logout() {
     this.isLoggingOut = true;
 
@@ -150,7 +163,7 @@ export class AuthLayoutComponent implements OnInit {
           life: 3000,
         });
 
-        // Redirect to login or public route instead of dashboard
+        // Redirect to login or public route instead of chat
         this.router.navigate(['/login']);
         this.isLoggingOut = false;
       },

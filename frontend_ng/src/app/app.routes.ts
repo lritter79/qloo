@@ -33,17 +33,24 @@ export const routes: Routes = [
     canActivate: [AuthGuard],
     children: [
       {
-        path: 'dashboard',
-        loadComponent: () =>
-          import('./pages/auth/dashboard/dashboard.component').then(
-            (m) => m.DashboardComponent
-          ),
-      },
-      {
         path: 'chat',
         loadComponent: () =>
           import('./pages/auth/chat/chat.component').then(
             (m) => m.ChatbotComponent
+          ),
+      },
+      {
+        path: 'chat/:id',
+        loadComponent: () =>
+          import('./pages/auth/chat/chat.component').then(
+            (m) => m.ChatbotComponent
+          ),
+      },
+      {
+        path: 'settings',
+        loadComponent: () =>
+          import('./pages/auth/settings/settings.component').then(
+            (m) => m.SettingsComponent
           ),
       },
     ],

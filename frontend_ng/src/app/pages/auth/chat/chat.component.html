@@ -83,12 +83,11 @@
           <div class="character-count">
             {{ currentMessage.length }}/500 
           </div>
-          
           <p-button 
             label="Send" 
             icon="pi pi-send" 
             (onClick)="sendMessage()"
-            [disabled]="!currentMessage.trim() || isLoading"
+            [disabled]="!currentMessage.trim() || isLoading || !chatId"
             class="send-btn">
           </p-button>
         </div>

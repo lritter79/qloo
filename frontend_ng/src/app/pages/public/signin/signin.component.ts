@@ -66,7 +66,7 @@ export class SigninComponent {
             severity: 'success',
             summary: 'Login Successful',
           });
-          this.router.navigate(['/dashboard']);
+          this.router.navigate(['/chat']);
         },
         error: (err) => {
           this.isLoading = false;

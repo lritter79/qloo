@@ -65,10 +65,10 @@ export interface SignupCredentials {
   providedIn: 'root',
 })
 export class AuthService {
-  private http = inject(HttpClient);
+  protected http = inject(HttpClient);
   private router = inject(Router);
 
-  private readonly API_URL = environment.apiUrl;
+  protected readonly API_URL = environment.apiUrl;
 
   // Session storage keys
   private readonly USER_KEY = 'auth_user';
@@ -301,7 +301,7 @@ export class AuthService {
   /**
    * Handle logout
    */
-  private handleLogout(): void {
+  protected handleLogout(): void {
     this.clearStorage();
     this.currentUserSubject.next(null);
     this.isAuthenticatedSubject.next(false);
@@ -323,7 +323,7 @@ export class AuthService {
   /**
    * Get authorization headers for HTTP requests
    */
-  private getAuthHeaders(): { headers: { Authorization: string } } {
+  protected getAuthHeaders(): { headers: { Authorization: string } } {
     const token = this.getAccessToken();
     return {
       headers: {

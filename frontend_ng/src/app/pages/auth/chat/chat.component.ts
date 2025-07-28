@@ -5,12 +5,14 @@ import {
   ElementRef,
   AfterViewChecked,
 } from '@angular/core';
-import { Chat, ChatService } from '../../../services/chat';
+import { Chat, ChatService } from '../../../services/chat.service';
 import { Button } from 'primeng/button';
 import { ProgressSpinner } from 'primeng/progressspinner';
 import { TextareaModule } from 'primeng/textarea';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-chat',
@@ -25,12 +27,29 @@ export class ChatbotComponent implements OnInit, AfterViewChecked {
   isLoading = false;
   chats: Chat[] = [];
   currentChat: Chat | null = null;
+  chatId: string | null = null;
   private shouldScrollToBottom = false;
 
-  constructor(private chatService: ChatService) {}
+  constructor(
+    private chatService: ChatService,
+    private route: ActivatedRoute,
+    private router: Router
+  ) {}
 
   ngOnInit(): void {
     this.loadChats();
+    this.route.paramMap.subscribe((params) => {
+      const id = params.get('id');
+      this.chatId = id;
+      if (id) {
+        const foundChat = this.chats.find((c) => c.id === id);
+        if (foundChat) {
+          this.selectChat(foundChat);
+        } else {
+          this.router.navigate(['/chat']);
+        }
+      }
+    });
   }
 
   ngAfterViewChecked(): void {
@@ -46,9 +65,16 @@ export class ChatbotComponent implements OnInit, AfterViewChecked {
   }
 
   createNewChat(): void {
-    this.chatService.createNewChat();
-    this.loadChats();
-    this.shouldScrollToBottom = true;
+    this.chatService.createNewChat().subscribe({
+      next: (chat) => {
+        this.loadChats();
+        this.shouldScrollToBottom = true;
+        this.router.navigate(['/chat', chat.id]);
+      },
+      error: (err) => {
+        console.error('Failed to create chat:', err);
+      },
+    });
   }
 
   selectChat(chat: Chat): void {
@@ -59,12 +85,19 @@ export class ChatbotComponent implements OnInit, AfterViewChecked {
 
   deleteChat(chat: Chat, event: Event): void {
     event.stopPropagation();
-    this.chatService.deleteChat(chat.id);
-    this.loadChats();
+    this.chatService.deleteChat(chat.id).subscribe({
+      next: () => {
+        this.loadChats();
+        this.router.navigate(['/chat']);
+      },
+      error: (err) => {
+        console.error('Failed to delete chat:', err);
+      },
+    });
   }
 
   sendMessage(): void {
-    if (!this.currentMessage.trim() || this.isLoading) {
+    if (!this.currentMessage.trim() || this.isLoading || !this.currentChat) {
       return;
     }
 
@@ -78,24 +111,26 @@ export class ChatbotComponent implements OnInit, AfterViewChecked {
 
     // Send to API
     this.isLoading = true;
-    this.chatService.sendMessage(messageContent).subscribe({
-      next: (response) => {
-        this.chatService.addApiMessage(response.response, userMessageId);
-        this.loadChats();
-        this.isLoading = false;
-        this.shouldScrollToBottom = true;
-      },
-      error: (error) => {
-        console.error('API Error:', error);
-        this.chatService.addApiMessage(
-          'Sorry, I encountered an error. Please try again.',
-          userMessageId
-        );
-        this.loadChats();
-        this.isLoading = false;
-        this.shouldScrollToBottom = true;
-      },
-    });
+    this.chatService
+      .sendMessage(messageContent, this.currentChat.id)
+      .subscribe({
+        next: (response) => {
+          this.chatService.addApiMessage(response.response, userMessageId);
+          this.loadChats();
+          this.isLoading = false;
+          this.shouldScrollToBottom = true;
+        },
+        error: (error) => {
+          console.error('API Error:', error);
+          this.chatService.addApiMessage(
+            'Sorry, I encountered an error. Please try again.',
+            userMessageId
+          );
+          this.loadChats();
+          this.isLoading = false;
+          this.shouldScrollToBottom = true;
+        },
+      });
   }
 
   onKeyPress(event: KeyboardEvent): void {

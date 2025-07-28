@@ -35,37 +35,31 @@ export interface ChatApiResponse {
   providedIn: 'root',
 })
 export class ChatService {
-  private readonly API_URL = environment.apiUrl;
+  protected readonly API_URL = environment.apiUrl;
   private readonly ACCESS_TOKEN_KEY = 'access_token';
   private chats: Chat[] = [];
   private currentChatId: string | null = null;
 
-  constructor(private http: HttpClient) {}
+  constructor(protected http: HttpClient) {}
 
-  sendMessage(prompt: string): Observable<ApiResponse> {
+  sendMessage(prompt: string, chatId: string): Observable<ApiResponse> {
     const request: ApiRequest = { prompt };
     return this.http.post<ApiResponse>(
-      `${this.API_URL}/chat/message`,
+      `${this.API_URL}/chat/${chatId}/message`,
       request,
       this.getAuthHeaders()
     );
   }
 
-  createNewChat(): string {
-    let chatId = '';
-    const chat = this.http
-      .post<ChatApiResponse>(`${this.API_URL}/chat`, {}, this.getAuthHeaders())
+  createNewChat(): Observable<Chat> {
+    return this.http
+      .post<Chat>(`${this.API_URL}/chat`, {}, this.getAuthHeaders())
       .pipe(
         tap((chat) => {
           this.chats.unshift(chat);
           this.currentChatId = chat.id;
-
-          chatId = chat.id;
         })
-      )
-      .subscribe();
-
-    return chatId;
+      );
   }
 
   addUserMessage(content: string): string {
@@ -119,11 +113,18 @@ export class ChatService {
     this.currentChatId = chatId;
   }
 
-  deleteChat(chatId: string): void {
-    this.chats = this.chats.filter((chat) => chat.id !== chatId);
-    if (this.currentChatId === chatId) {
-      this.currentChatId = this.chats.length > 0 ? this.chats[0].id : null;
-    }
+  deleteChat(chatId: string): Observable<void> {
+    return this.http
+      .delete<void>(`${this.API_URL}/chat/${chatId}`, this.getAuthHeaders())
+      .pipe(
+        tap(() => {
+          this.chats = this.chats.filter((chat) => chat.id !== chatId);
+          if (this.currentChatId === chatId) {
+            this.currentChatId =
+              this.chats.length > 0 ? this.chats[0].id : null;
+          }
+        })
+      );
   }
 
   getAccessToken(): string | null {

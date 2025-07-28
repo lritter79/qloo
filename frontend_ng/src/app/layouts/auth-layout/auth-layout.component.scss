@@ -1,7 +1,6 @@
 // auth-layout.component.scss
 
 .auth-layout {
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: var(--surface-ground);
@@ -42,7 +41,6 @@
 
   .main-content {
     flex: 1;
-    padding: 2rem 1rem 1rem 1rem; // Added top padding to prevent overlap
     background-color: var(--surface-ground);
     transition: background-color 0.3s ease;
     min-height: calc(100vh - 70px); // Account for toolbar height
@@ -142,9 +140,7 @@
       }
     }
 
-    .main-content {
-      padding: 0.5rem;
-    }
+
   }
 }
 
