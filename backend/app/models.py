@@ -1,4 +1,6 @@
+from fastapi_camelcase import CamelModel
 from pydantic import BaseModel
+from typing import List, Literal
 
 
 class User(BaseModel):
@@ -14,3 +16,17 @@ class Login(BaseModel):
 
 class RefreshToken(BaseModel):
     refreshToken: str
+
+
+class ChatMessage(BaseModel):
+    id: str
+    type: Literal['user', 'api']
+    content: str
+    timestamp: str
+    parentId: str | None
+
+
+class Chat(CamelModel):
+    id: str
+    created_at: str
+    user_id: str

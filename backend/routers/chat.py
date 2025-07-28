@@ -1,8 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Annotated, Any
+from app.models import Chat
 from app.services.openAI import OpenAIService
+from db.supabase import create_supabase_client
 from routers.users import validate_jwt
+from datetime import datetime
 import os
 
 router = APIRouter()
@@ -17,12 +20,44 @@ openai_service = OpenAIService(
 
 class PromptRequest(BaseModel):
     prompt: str
+    chat_id: str
+    parent_id: str | None
 
 
 @router.post("/chat")
-async def chat_with_openai(request: PromptRequest, jwt: Annotated[dict, Depends(validate_jwt)]) -> Any:
+async def add_chat(jwt: Annotated[dict, Depends(validate_jwt)]) -> Any:
     try:
+        supabase = create_supabase_client()
+        # Create a datetime object
+        now = datetime.now()
+
+        # Convert datetime to string with a specific format
+        formatted_date_string = now.strftime("%Y-%m-%d %H:%M:%S")
+        response = (
+            supabase.table("chats")
+            .insert({"user_id": jwt["sub"], "created_at": formatted_date_string})
+            .execute()
+        )
+        return Chat(user_id=response.data[0]["user_id"], created_at=response.data[0]["created_at"], id=response.data[0]["id"])
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/chat/message")
+async def add_message_with_openai(request: PromptRequest, jwt: Annotated[dict, Depends(validate_jwt)]) -> Any:
+    try:
+        supabase = create_supabase_client()
+        user_response = (
+            supabase.table("messages")
+            .insert({"timestamp": datetime.now(), "content": request.prompt, "type": "user", "parent_id": request.parent_id or None, "chat_id": request.chat_id})
+            .execute()
+        )
         result = await openai_service.chat_with_tools(request.prompt)
+        api_response = (
+            supabase.table("messages")
+            .insert({"timestamp": datetime.now(), "content": result, "type": "api", "parent_id": user_response["id"], "chat_id": request.chat_id})
+            .execute()
+        )
         return {"response": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
