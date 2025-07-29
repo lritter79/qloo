@@ -1,6 +1,6 @@
 import os
 from fastapi import FastAPI
-from routers import users, qloo, chat
+from app.routers import users, qloo, chat
 from fastapi.middleware.cors import CORSMiddleware
 
 env = os.getenv("ENVIRONMENT", default="development")
@@ -36,8 +36,3 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.get("/")
-async def root():
-    return {"message": "Hello Bigger Applications!"}

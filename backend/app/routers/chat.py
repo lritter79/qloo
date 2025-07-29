@@ -3,8 +3,8 @@ from pydantic import BaseModel
 from typing import Annotated, Any, List
 from app.models import Chat
 from app.services.openAI import OpenAIService
-from db.supabase import create_supabase_client
-from routers.users import validate_jwt
+from app.db.supabase import create_supabase_client
+from app.routers.users import validate_jwt
 from datetime import datetime
 import os
 

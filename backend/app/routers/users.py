@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from app.models import ForgotPassword, RefreshToken, ResetPassword, User, Login
-from db.supabase import create_supabase_client, create_supabase_client_admin
+from app.db.supabase import create_supabase_client, create_supabase_client_admin
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from typing import Annotated
 import jwt
