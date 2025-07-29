@@ -32,10 +32,10 @@ async def get_chats(jwt: Annotated[dict, Depends(validate_jwt)]) -> List[Chat]:
         response = (
             supabase.table("chats")
             .select("*")
-            .filter("user_id", jwt["sub"])
+            .eq("user_id", jwt["sub"])
             .execute()
         )
-        return response
+        return response.data
     except Exception as error:
         raise HTTPException(status_code=500, detail=str(error))
 
