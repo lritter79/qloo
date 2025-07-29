@@ -34,10 +34,23 @@ export class ChatbotComponent implements OnInit, AfterViewChecked {
     private chatService: ChatService,
     private route: ActivatedRoute,
     private router: Router
-  ) {}
+  ) {
+    console.log('Chat component constructor called');
+  }
 
   ngOnInit(): void {
-    this.loadChats();
+    console.log('Chat component initialized');
+    this.chatService.getUserChats().subscribe({
+      next: (chats) => {
+        this.chats = chats;
+        this.loadChats();
+        this.shouldScrollToBottom = true;
+      },
+      error: (err) => {
+        console.error('Failed to load chats:', err);
+      },
+    });
+
     this.route.paramMap.subscribe((params) => {
       const id = params.get('id');
       this.chatId = id;

@@ -42,6 +42,24 @@ export class ChatService {
 
   constructor(protected http: HttpClient) {}
 
+  getUserChats(): Observable<ChatApiResponse[]> {
+    return this.http
+      .get<ChatApiResponse[]>(`${this.API_URL}/chats`, this.getAuthHeaders())
+      .pipe(
+        tap((chats) => {
+          this.chats = chats.map((chat) => ({
+            id: chat.id,
+            createdAt: chat.createdAt,
+          }));
+          if (this.chats.length > 0) {
+            this.currentChatId = this.chats[0].id;
+          } else {
+            this.currentChatId = null;
+          }
+        })
+      );
+  }
+
   sendMessage(prompt: string, chatId: string): Observable<ApiResponse> {
     const request: ApiRequest = { prompt };
     return this.http.post<ApiResponse>(
