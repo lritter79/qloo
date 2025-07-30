@@ -1,4 +1,6 @@
+import json
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi_camelcase import CamelModel
 from pydantic import BaseModel
 from typing import Annotated, Any, List
 from app.models import Chat
@@ -13,15 +15,22 @@ router = APIRouter()
 # Replace with your actual API keys
 key: str = os.environ.get("OPEN_AI_API_KEY")
 qloo_key: str = os.environ.get("QLOO_API_KEY")
+grayswan_key: str = os.environ.get("GRAYSWAN_KEY")
 # Initialize the OpenAI service once
 openai_service = OpenAIService(
-    api_key=key, qloo_api_key=qloo_key, model="gpt-4.1-mini")
+    api_key=key, qloo_api_key=qloo_key, model="gpt-4.1-mini", base_url="https://api.grayswan.ai/cygnal", default_headers={"grayswan-api-key": grayswan_key,
+                                                                                                                          "policy-id": "681b8b933152ec0311b99ac9",
+                                                                                                                          "pre-violation": "0.5",
+                                                                                                                          "pre-jailbreak": "0.5",
+                                                                                                                          "post-violation": "0.5",
+                                                                                                                          "post-violation-jb": "0.5",
+                                                                                                                          "category-stay-on-topic": "Only answer questions related to recommendations based on tastes or preferences mentioned in the prompt"}
+)
 
 
-class PromptRequest(BaseModel):
+class PromptRequest(CamelModel):
     prompt: str
     chat_id: str
-    parent_id: str | None
 
 
 @router.get("/chats")
@@ -63,15 +72,21 @@ async def add_chat(jwt: Annotated[dict, Depends(validate_jwt)]) -> Any:
 async def add_message_with_openai(request: PromptRequest, jwt: Annotated[dict, Depends(validate_jwt)]) -> Any:
     try:
         supabase = create_supabase_client()
+        my_datetime_object = datetime.now()
+        json_serializable_string = my_datetime_object.isoformat()
         user_response = (
             supabase.table("messages")
-            .insert({"timestamp": datetime.now(), "content": request.prompt, "type": "user", "parent_id": request.parent_id or None, "chat_id": request.chat_id})
+            .insert({"timestamp":
+                     json_serializable_string, "content": request.prompt, "type": "user", "chat_id": request.chat_id})
             .execute()
         )
         result = await openai_service.chat_with_tools(request.prompt)
+        my_datetime_object = datetime.now()
+        json_serializable_string = my_datetime_object.isoformat()
+
         api_response = (
             supabase.table("messages")
-            .insert({"timestamp": datetime.now(), "content": result, "type": "api", "parent_id": user_response["id"], "chat_id": request.chat_id})
+            .insert({"timestamp": json_serializable_string, "content": result, "type": "api", "chat_id": request.chat_id})
             .execute()
         )
         return {"response": result}

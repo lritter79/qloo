@@ -1,18 +1,20 @@
-import openai
+from openai import OpenAI
 import json
 from typing import Any
 from .qloo_tool import QlooToolHandler
 
 
 class OpenAIService:
-    def __init__(self, api_key: str, model: str = "gpt-4-turbo", qloo_api_key: str = ""):
-        openai.api_key = api_key
+
+    def __init__(self, api_key: str, model: str = "gpt-4-turbo", qloo_api_key: str = "", base_url=None, default_headers=None):
+        self.client = OpenAI(api_key=api_key,
+                              base_url=base_url, default_headers=default_headers)
         self.model = model
         self.tool_handler = QlooToolHandler(qloo_api_key)
 
     async def chat_with_tools(self, user_prompt: str):
         messages = [{"role": "user", "content": user_prompt}]
-        completion = openai.chat.completions.create(
+        completion = self.client.chat.completions.create(
             model=self.model,
             messages=messages,
             tools=[self.tool_handler.get_schema()],
@@ -34,7 +36,7 @@ class OpenAIService:
                 "content": str(result)
             })
 
-            completion_2 = openai.chat.completions.create(
+            completion_2 = self.client.chat.completions.create(
                 model="gpt-4.1",
                 messages=messages,
                 tools=[self.tool_handler.get_schema()],
