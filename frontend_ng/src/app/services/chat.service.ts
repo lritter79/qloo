@@ -1,8 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { Observable, BehaviorSubject, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
-import id from '@angular/common/locales/id';
 
 export interface ChatMessage {
   id: string;
@@ -15,6 +14,7 @@ export interface ChatMessage {
 export interface Chat {
   id: string;
   createdAt: string;
+  messages: ChatMessage[];
 }
 
 export interface ApiRequest {
@@ -37,8 +37,14 @@ export interface ChatApiResponse {
 export class ChatService {
   protected readonly API_URL = environment.apiUrl;
   private readonly ACCESS_TOKEN_KEY = 'access_token';
-  private chats: Chat[] = [];
-  private currentChatId: string | null = null;
+
+  // Use BehaviorSubjects for reactive state management
+  private chatsSubject = new BehaviorSubject<Chat[]>([]);
+  private currentChatIdSubject = new BehaviorSubject<string | null>(null);
+
+  // Public observables
+  public chats$ = this.chatsSubject.asObservable();
+  public currentChatId$ = this.currentChatIdSubject.asObservable();
 
   constructor(protected http: HttpClient) {}
 
@@ -47,14 +53,25 @@ export class ChatService {
       .get<ChatApiResponse[]>(`${this.API_URL}/chats`, this.getAuthHeaders())
       .pipe(
         tap((chats) => {
-          this.chats = chats.map((chat) => ({
+          const mappedChats = chats.map((chat) => ({
             id: chat.id,
             createdAt: chat.createdAt,
+            messages: [] as ChatMessage[],
           }));
-          if (this.chats.length > 0) {
-            this.currentChatId = this.chats[0].id;
-          } else {
-            this.currentChatId = null;
+          this.chatsSubject.next(mappedChats);
+
+          // Set current chat to first one if none selected
+          const currentId = this.currentChatIdSubject.value;
+          if (!currentId && mappedChats.length > 0) {
+            this.setCurrentChat(mappedChats[0].id);
+          } else if (
+            currentId &&
+            !mappedChats.find((c) => c.id === currentId)
+          ) {
+            // Current chat no longer exists, select first available or null
+            this.setCurrentChat(
+              mappedChats.length > 0 ? mappedChats[0].id : null
+            );
           }
         })
       );
@@ -74,17 +91,18 @@ export class ChatService {
       .post<Chat>(`${this.API_URL}/chat`, {}, this.getAuthHeaders())
       .pipe(
         tap((chat) => {
-          this.chats.unshift(chat);
-          this.currentChatId = chat.id;
+          const newChat: Chat = {
+            ...chat,
+            messages: [],
+          };
+          const currentChats = this.chatsSubject.value;
+          this.chatsSubject.next([newChat, ...currentChats]);
+          this.setCurrentChat(newChat.id);
         })
       );
   }
 
-  addUserMessage(content: string): string {
-    if (!this.currentChatId) {
-      this.createNewChat();
-    }
-
+  addUserMessage(content: string, chatId: string): string {
     const messageId = this.generateId();
     const message: ChatMessage = {
       id: messageId,
@@ -93,15 +111,11 @@ export class ChatService {
       timestamp: new Date().toISOString(),
     };
 
-    const chat = this.getCurrentChat();
-    if (chat) {
-      //chat.messages.push(message);
-    }
-
+    this.addMessageToChat(chatId, message);
     return messageId;
   }
 
-  addApiMessage(content: string, parentId: string): string {
+  addApiMessage(content: string, parentId: string, chatId: string): string {
     const messageId = this.generateId();
     const message: ChatMessage = {
       id: messageId,
@@ -111,24 +125,37 @@ export class ChatService {
       parentId,
     };
 
-    const chat = this.getCurrentChat();
-    if (chat) {
-      //chat.messages.push(message);
-    }
-
+    this.addMessageToChat(chatId, message);
     return messageId;
   }
 
+  private addMessageToChat(chatId: string, message: ChatMessage): void {
+    const currentChats = this.chatsSubject.value;
+    const updatedChats = currentChats.map((chat) =>
+      chat.id === chatId
+        ? { ...chat, messages: [...chat.messages, message] }
+        : chat
+    );
+    this.chatsSubject.next(updatedChats);
+  }
+
   getCurrentChat(): Chat | null {
-    return this.chats.find((chat) => chat.id === this.currentChatId) || null;
+    const currentId = this.currentChatIdSubject.value;
+    return currentId
+      ? this.chatsSubject.value.find((chat) => chat.id === currentId) || null
+      : null;
   }
 
   getAllChats(): Chat[] {
-    return this.chats;
+    return this.chatsSubject.value;
   }
 
-  setCurrentChat(chatId: string): void {
-    this.currentChatId = chatId;
+  setCurrentChat(chatId: string | null): void {
+    this.currentChatIdSubject.next(chatId);
+  }
+
+  getCurrentChatId(): string | null {
+    return this.currentChatIdSubject.value;
   }
 
   deleteChat(chatId: string): Observable<void> {
@@ -136,10 +163,17 @@ export class ChatService {
       .delete<void>(`${this.API_URL}/chat/${chatId}`, this.getAuthHeaders())
       .pipe(
         tap(() => {
-          this.chats = this.chats.filter((chat) => chat.id !== chatId);
-          if (this.currentChatId === chatId) {
-            this.currentChatId =
-              this.chats.length > 0 ? this.chats[0].id : null;
+          const currentChats = this.chatsSubject.value;
+          const updatedChats = currentChats.filter(
+            (chat) => chat.id !== chatId
+          );
+          this.chatsSubject.next(updatedChats);
+
+          // Update current chat if the deleted one was selected
+          if (this.currentChatIdSubject.value === chatId) {
+            this.setCurrentChat(
+              updatedChats.length > 0 ? updatedChats[0].id : null
+            );
           }
         })
       );

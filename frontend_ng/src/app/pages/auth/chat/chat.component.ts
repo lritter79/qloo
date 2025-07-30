@@ -4,6 +4,7 @@ import {
   ViewChild,
   ElementRef,
   AfterViewChecked,
+  OnDestroy,
 } from '@angular/core';
 import { Chat, ChatService } from '../../../services/chat.service';
 import { Button } from 'primeng/button';
@@ -11,23 +12,32 @@ import { ProgressSpinner } from 'primeng/progressspinner';
 import { TextareaModule } from 'primeng/textarea';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Subject, combineLatest, takeUntil } from 'rxjs';
+import { MessagesComponent } from './messages/messages.component';
 
 @Component({
   selector: 'app-chat',
   templateUrl: './chat.component.html',
   styleUrls: ['./chat.component.scss'],
-  imports: [Button, ProgressSpinner, TextareaModule, CommonModule, FormsModule],
+  imports: [
+    Button,
+    ProgressSpinner,
+    TextareaModule,
+    CommonModule,
+    FormsModule,
+    MessagesComponent,
+  ],
 })
-export class ChatbotComponent implements OnInit, AfterViewChecked {
+export class ChatbotComponent implements OnInit, AfterViewChecked, OnDestroy {
   @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
 
   currentMessage = '';
   isLoading = false;
   chats: Chat[] = [];
   currentChat: Chat | null = null;
-  chatId: string | null = null;
+
+  private destroy$ = new Subject<void>();
   private shouldScrollToBottom = false;
 
   constructor(
@@ -40,28 +50,52 @@ export class ChatbotComponent implements OnInit, AfterViewChecked {
 
   ngOnInit(): void {
     console.log('Chat component initialized');
-    this.chatService.getUserChats().subscribe({
-      next: (chats) => {
+
+    // Subscribe to chats and current chat changes first
+    combineLatest([
+      this.chatService.chats$,
+      this.chatService.currentChatId$,
+      this.route.paramMap,
+    ])
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(([chats, currentChatId, params]) => {
         this.chats = chats;
-        this.loadChats();
+
+        const routeId = params.get('id');
+
+        // If route has an ID but it's different from current chat, update current chat
+        if (routeId && routeId !== currentChatId) {
+          const foundChat = chats.find((c) => c.id === routeId);
+          if (foundChat) {
+            this.chatService.setCurrentChat(routeId);
+            this.currentChat = foundChat;
+          } else if (chats.length > 0) {
+            // Route ID doesn't exist, redirect to base chat route (no selection)
+            this.router.navigate(['/chat']);
+            return;
+          }
+        }
+        // If no route ID, ensure no chat is selected (don't auto-navigate)
+        else if (!routeId) {
+          if (currentChatId) {
+            // Clear any selected chat when on base /chat route
+            this.chatService.setCurrentChat(null);
+          }
+          this.currentChat = null;
+        }
+        // If route ID matches current chat ID, just update the current chat reference
+        else if (routeId === currentChatId) {
+          this.currentChat = chats.find((c) => c.id === currentChatId) || null;
+        }
+
         this.shouldScrollToBottom = true;
-      },
+      });
+
+    // Load chats only once, after setting up subscriptions
+    this.chatService.getUserChats().subscribe({
       error: (err) => {
         console.error('Failed to load chats:', err);
       },
-    });
-
-    this.route.paramMap.subscribe((params) => {
-      const id = params.get('id');
-      this.chatId = id;
-      if (id) {
-        const foundChat = this.chats.find((c) => c.id === id);
-        if (foundChat) {
-          this.selectChat(foundChat);
-        } else {
-          this.router.navigate(['/chat']);
-        }
-      }
     });
   }
 
@@ -72,17 +106,16 @@ export class ChatbotComponent implements OnInit, AfterViewChecked {
     }
   }
 
-  loadChats(): void {
-    this.chats = this.chatService.getAllChats();
-    this.currentChat = this.chatService.getCurrentChat();
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   createNewChat(): void {
     this.chatService.createNewChat().subscribe({
       next: (chat) => {
-        this.loadChats();
+        // Navigation will be handled by the subscription to currentChatId$
         this.shouldScrollToBottom = true;
-        this.router.navigate(['/chat', chat.id]);
       },
       error: (err) => {
         console.error('Failed to create chat:', err);
@@ -91,17 +124,15 @@ export class ChatbotComponent implements OnInit, AfterViewChecked {
   }
 
   selectChat(chat: Chat): void {
-    this.chatService.setCurrentChat(chat.id);
-    this.currentChat = chat;
-    this.shouldScrollToBottom = true;
+    // Just navigate to the chat - the subscription will handle the rest
+    this.router.navigate(['/chat', chat.id]);
   }
 
   deleteChat(chat: Chat, event: Event): void {
     event.stopPropagation();
     this.chatService.deleteChat(chat.id).subscribe({
       next: () => {
-        this.loadChats();
-        this.router.navigate(['/chat']);
+        // Navigation will be handled by the subscription to currentChatId$
       },
       error: (err) => {
         console.error('Failed to delete chat:', err);
@@ -115,35 +146,39 @@ export class ChatbotComponent implements OnInit, AfterViewChecked {
     }
 
     const messageContent = this.currentMessage.trim();
+    const chatId = this.currentChat.id;
     this.currentMessage = '';
 
     // Add user message
-    const userMessageId = this.chatService.addUserMessage(messageContent);
-    this.loadChats();
+    const userMessageId = this.chatService.addUserMessage(
+      messageContent,
+      chatId
+    );
     this.shouldScrollToBottom = true;
 
     // Send to API
     this.isLoading = true;
-    this.chatService
-      .sendMessage(messageContent, this.currentChat.id)
-      .subscribe({
-        next: (response) => {
-          this.chatService.addApiMessage(response.response, userMessageId);
-          this.loadChats();
-          this.isLoading = false;
-          this.shouldScrollToBottom = true;
-        },
-        error: (error) => {
-          console.error('API Error:', error);
-          this.chatService.addApiMessage(
-            'Sorry, I encountered an error. Please try again.',
-            userMessageId
-          );
-          this.loadChats();
-          this.isLoading = false;
-          this.shouldScrollToBottom = true;
-        },
-      });
+    this.chatService.sendMessage(messageContent, chatId).subscribe({
+      next: (response) => {
+        this.chatService.addApiMessage(
+          response.response,
+          userMessageId,
+          chatId
+        );
+        this.isLoading = false;
+        this.shouldScrollToBottom = true;
+      },
+      error: (error) => {
+        console.error('API Error:', error);
+        this.chatService.addApiMessage(
+          'Sorry, I encountered an error. Please try again.',
+          userMessageId,
+          chatId
+        );
+        this.isLoading = false;
+        this.shouldScrollToBottom = true;
+      },
+    });
   }
 
   onKeyPress(event: KeyboardEvent): void {
@@ -151,12 +186,6 @@ export class ChatbotComponent implements OnInit, AfterViewChecked {
       event.preventDefault();
       this.sendMessage();
     }
-  }
-
-  formatDate(dateString: string): string {
-    const date = new Date(dateString);
-    console.log(date);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   }
 
   formatMessageTime(dateString: string): string {
