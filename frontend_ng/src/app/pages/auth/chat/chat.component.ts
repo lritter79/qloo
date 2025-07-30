@@ -151,6 +151,7 @@ export class ChatbotComponent implements OnInit, AfterViewChecked, OnDestroy {
     this.chatService.deleteChat(chat.id).subscribe({
       next: () => {
         // Navigation will be handled by the subscription to currentChatId$
+        this.cacheService.clear(chat.id);
       },
       error: (err) => {
         console.error('Failed to delete chat:', err);
@@ -172,6 +173,7 @@ export class ChatbotComponent implements OnInit, AfterViewChecked, OnDestroy {
       messageContent,
       chatId
     );
+    this.cacheService.clear(chatId);
     this.shouldScrollToBottom = true;
 
     // Send to API
@@ -183,6 +185,15 @@ export class ChatbotComponent implements OnInit, AfterViewChecked, OnDestroy {
           userMessageId,
           chatId
         );
+        this.cacheService.set(chatId, [
+          ...(this.cacheService.get(chatId) || []),
+          {
+            id: userMessageId,
+            type: 'api',
+            content: response.response,
+            timestamp: new Date().toISOString(),
+          },
+        ]);
         this.isLoading = false;
         this.shouldScrollToBottom = true;
       },

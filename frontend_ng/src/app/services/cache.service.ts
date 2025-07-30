@@ -33,9 +33,13 @@ export class CacheService {
   }
 
   // The 'clear' method to clear data from the cache.
-  clear(key: string): void {
+  clear(key?: string): void {
     // We remove the data from the cache and update the BehaviorSubject.
-    this.cache.delete(key);
+    if (key) {
+      this.cache.delete(key);
+    } else {
+      this.cache.clear();
+    }
     this.cache$.next(null);
   }
 }
