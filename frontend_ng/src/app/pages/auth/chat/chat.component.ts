@@ -12,9 +12,10 @@ import { TextareaModule } from 'primeng/textarea';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Subject, combineLatest, takeUntil } from 'rxjs';
+import { Subject, Subscription, combineLatest, takeUntil } from 'rxjs';
 import { MessagesComponent } from './messages/messages.component';
 import { FormatDatePipe } from '../../../pipes/format-date.pipe';
+import { CacheService } from '../../../services/cache.service';
 
 @Component({
   selector: 'app-chat',
@@ -36,11 +37,14 @@ export class ChatbotComponent implements OnInit, AfterViewChecked, OnDestroy {
   isLoading = false;
   chats: Chat[] = [];
   currentChat: Chat | null = null;
+  data: any[] | null = null;
 
+  private cacheSubscription: Subscription | undefined;
   private destroy$ = new Subject<void>();
   private shouldScrollToBottom = false;
 
   constructor(
+    private cacheService: CacheService,
     private chatService: ChatService,
     private route: ActivatedRoute,
     private router: Router
@@ -50,7 +54,9 @@ export class ChatbotComponent implements OnInit, AfterViewChecked, OnDestroy {
 
   ngOnInit(): void {
     console.log('Chat component initialized');
-
+    this.cacheSubscription = this.cacheService.cache$.subscribe((data) => {
+      this.data = data;
+    });
     // Subscribe to chats and current chat changes first
     combineLatest([
       this.chatService.chats$,
@@ -109,6 +115,7 @@ export class ChatbotComponent implements OnInit, AfterViewChecked, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    this.cacheSubscription?.unsubscribe();
   }
 
   createNewChat(): void {
@@ -126,11 +133,17 @@ export class ChatbotComponent implements OnInit, AfterViewChecked, OnDestroy {
   selectChat(chat: Chat): void {
     // Just navigate to the chat - the subscription will handle the rest
     this.router.navigate(['/chat', chat.id]);
-    this.chatService.getChatMessages(chat.id).subscribe((messages) => {
-      if (this.currentChat) {
-        this.currentChat.messages = messages;
-      }
-    });
+    const cachedData = this.cacheService.get(chat.id) ?? null;
+
+    // If the data is not in cache, we retrieve it from the server and store it in the cache.
+    if (!cachedData) {
+      this.chatService.getChatMessages(chat.id).subscribe((messages) => {
+        if (this.currentChat) {
+          this.currentChat.messages = messages;
+          this.cacheService.set(chat.id, messages);
+        }
+      });
+    }
   }
 
   deleteChat(chat: Chat, event: Event): void {
