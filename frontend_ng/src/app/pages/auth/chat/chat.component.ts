@@ -126,6 +126,11 @@ export class ChatbotComponent implements OnInit, AfterViewChecked, OnDestroy {
   selectChat(chat: Chat): void {
     // Just navigate to the chat - the subscription will handle the rest
     this.router.navigate(['/chat', chat.id]);
+    this.chatService.getChatMessages(chat.id).subscribe((messages) => {
+      if (this.currentChat) {
+        this.currentChat.messages = messages;
+      }
+    });
   }
 
   deleteChat(chat: Chat, event: Event): void {

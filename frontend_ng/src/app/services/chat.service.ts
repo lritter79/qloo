@@ -78,6 +78,23 @@ export class ChatService {
       );
   }
 
+  getChatMessages(chatId: string): Observable<ChatMessage[]> {
+    return this.http
+      .get<ChatMessage[]>(
+        `${this.API_URL}/chat/${chatId}/messages`,
+        this.getAuthHeaders()
+      )
+      .pipe(
+        tap((messages) => {
+          const currentChats = this.chatsSubject.value;
+          const updatedChats = currentChats.map((chat) =>
+            chat.id === chatId ? { ...chat, messages } : chat
+          );
+          this.chatsSubject.next(updatedChats);
+        })
+      );
+  }
+
   sendMessage(prompt: string, chatId: string): Observable<ApiResponse> {
     const request: ApiRequest = { prompt, chatId };
     return this.http.post<ApiResponse>(

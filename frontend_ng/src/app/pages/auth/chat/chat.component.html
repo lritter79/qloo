@@ -59,7 +59,7 @@
           placeholder="Type your message here..."
           class="message-input"
           rows="3"
-          [disabled]="isLoading">
+          [disabled]="isLoading || !currentChat">
         </textarea>
         
         <div class="input-footer">
