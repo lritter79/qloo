@@ -101,7 +101,7 @@ async def get_messages(id: str, jwt: Annotated[dict, Depends(validate_jwt)]) -> 
         response = (
             supabase.table("messages")
             .select("*")
-            .filter("chat_id", id)
+            .eq("chat_id", id)
             .execute()
         )
         return response.data

@@ -1,13 +1,16 @@
 from typing import Any, List, Optional
 import httpx
+from .. import constants
+
 
 class QlooService:
+
+    insights_url = "https://hackathon.api.qloo.com/insights"
+    search_url = "https://hackathon.api.qloo.com/search"
     _key: str
-    _url_search: str
 
     def __init__(self, key: str):
         self._key = key
-        self._url_search = "https://hackathon.api.qloo.com/search"
 
     async def get_music_recommendations_artist(self, qlooParams: dict[str, Any]):
         try:
@@ -52,3 +55,59 @@ class QlooService:
         except Exception as e:
             print("Error: ", e)
             return {"message": "failed"}
+
+    async def get_qloo_entity(self, filterType: str, query: str, take=1):
+        headers = {
+            "accept": "application/json",
+            "x-api-key": self._key
+        }
+
+        params = {
+            "filter.type": f"urn:entity:{filterType}",
+            "query": query,
+            "take": take
+        }
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(self.search_url, headers=headers, params=params)
+                response.raise_for_status()
+                return response.json().get("results", [])
+        except Exception as e:
+            return {"error": str(e)}
+
+    async def get_insights(self, qlooParams: dict[str, Any]):
+        headers = {
+            "accept": "application/json",
+            "x-api-key": self._key
+        }
+
+        tag_filters = []
+        for param_name, urn_prefix in constants.FILTER_PARAMS.items():
+            values = qlooParams.get(param_name)
+            if values:
+                tag_filters.extend([f"{urn_prefix}:{v}" for v in values])
+        output_params = []
+        for param_name, urn_prefix in constants.OUTPUT_PARAMS.items():
+            value = qlooParams.get(param_name)
+            if value is not None:
+                output_params.append(f"{urn_prefix}:{value}")
+        signal_params = []
+        for param_name, urn_prefix in constants.SIGNAL_PARAMS.items():
+            value = qlooParams.get(param_name)
+            if value is not None:
+                signal_params.append(f"{urn_prefix}:{value}")
+
+        params = {
+            "filter.tags": ",".join(tag_filters),
+            "output": ",".join(output_params),
+            "signal": ",".join(signal_params)
+        }
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(self.insights_url, headers=headers, params=params)
+                response.raise_for_status()
+                return response.json().get("results", [])
+        except Exception as e:
+            return {"error": str(e)}

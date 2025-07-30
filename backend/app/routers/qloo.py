@@ -1,7 +1,6 @@
 from enum import Enum
 from fastapi import APIRouter, Depends, Query
-from typing import Annotated, Optional, List
-
+from typing import Annotated, Optional, List 
 from app.services.qloo import QlooService
 from .users import validate_jwt
 import requests
