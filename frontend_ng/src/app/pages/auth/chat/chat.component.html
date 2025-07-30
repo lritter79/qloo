@@ -18,7 +18,7 @@
         [class.active]="currentChat?.id === chat.id"
         (click)="selectChat(chat)">
         <div class="chat-item-content">
-          <div class="chat-date">{{ formatDate(chat.createdAt) }}</div>
+          <div class="chat-date">{{ (chat.createdAt) | formatDate }}</div>
           <!-- <div class="message-count">{{ chat.messages.length }} messages</div> -->
         </div>
         <p-button 

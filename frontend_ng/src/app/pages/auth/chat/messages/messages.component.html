@@ -7,7 +7,7 @@
           
           <div class="message-bubble">
             <div class="message-content">{{ message.content }}</div>
-            <div class="message-time">{{ formatMessageTime(message.timestamp) }}</div>
+            <div class="message-time">{{ (message.timestamp) | formatMessageTime }}</div>
           </div>
         </div>
 

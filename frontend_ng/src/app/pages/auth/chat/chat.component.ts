@@ -14,20 +14,14 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, combineLatest, takeUntil } from 'rxjs';
-import { MessagesComponent } from './messages/messages.component';
+import { MessagesComponent } from "./messages/messages.component";
+import { FormatDatePipe } from "../../../pipes/format-date.pipe";
 
 @Component({
   selector: 'app-chat',
   templateUrl: './chat.component.html',
   styleUrls: ['./chat.component.scss'],
-  imports: [
-    Button,
-    ProgressSpinner,
-    TextareaModule,
-    CommonModule,
-    FormsModule,
-    MessagesComponent,
-  ],
+  imports: [Button, ProgressSpinner, TextareaModule, CommonModule, FormsModule, MessagesComponent, FormatDatePipe],
 })
 export class ChatbotComponent implements OnInit, AfterViewChecked, OnDestroy {
   @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
@@ -186,11 +180,6 @@ export class ChatbotComponent implements OnInit, AfterViewChecked, OnDestroy {
       event.preventDefault();
       this.sendMessage();
     }
-  }
-
-  formatMessageTime(dateString: string): string {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString();
   }
 
   private scrollToBottom(): void {
