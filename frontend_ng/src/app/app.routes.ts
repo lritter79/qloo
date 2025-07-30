@@ -12,6 +12,13 @@ export const routes: Routes = [
     children: [
       { path: '', redirectTo: 'signin', pathMatch: 'full' },
       {
+        path: 'about',
+        loadComponent: () =>
+          import('./pages/public/about/about.component').then(
+            (m) => m.AboutComponent
+          ),
+      },
+      {
         path: 'signin',
         loadComponent: () =>
           import('./pages/public/signin/signin.component').then(

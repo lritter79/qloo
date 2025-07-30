@@ -19,6 +19,7 @@ export interface Chat {
 
 export interface ApiRequest {
   prompt: string;
+  chatId: string; // Optional for new chats
 }
 
 export interface ApiResponse {
@@ -78,7 +79,7 @@ export class ChatService {
   }
 
   sendMessage(prompt: string, chatId: string): Observable<ApiResponse> {
-    const request: ApiRequest = { prompt };
+    const request: ApiRequest = { prompt, chatId };
     return this.http.post<ApiResponse>(
       `${this.API_URL}/chat/${chatId}/message`,
       request,

@@ -8,20 +8,26 @@ import {
 } from '@angular/core';
 import { Chat, ChatService } from '../../../services/chat.service';
 import { Button } from 'primeng/button';
-import { ProgressSpinner } from 'primeng/progressspinner';
 import { TextareaModule } from 'primeng/textarea';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, combineLatest, takeUntil } from 'rxjs';
-import { MessagesComponent } from "./messages/messages.component";
-import { FormatDatePipe } from "../../../pipes/format-date.pipe";
+import { MessagesComponent } from './messages/messages.component';
+import { FormatDatePipe } from '../../../pipes/format-date.pipe';
 
 @Component({
   selector: 'app-chat',
   templateUrl: './chat.component.html',
   styleUrls: ['./chat.component.scss'],
-  imports: [Button, ProgressSpinner, TextareaModule, CommonModule, FormsModule, MessagesComponent, FormatDatePipe],
+  imports: [
+    Button,
+    TextareaModule,
+    CommonModule,
+    FormsModule,
+    MessagesComponent,
+    FormatDatePipe,
+  ],
 })
 export class ChatbotComponent implements OnInit, AfterViewChecked, OnDestroy {
   @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
