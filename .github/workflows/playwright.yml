@@ -18,10 +18,21 @@ jobs:
           node-version: lts/*
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
+      - name: Build Angular app (optional)
+        run: npm run build # only if needed
+
+      - name: Start Angular app
+        run: npm run start &
+        env:
+          CI: true
+
+      - name: Wait for server to be ready
+        run: npx wait-on http://localhost:4200
+
+      - name: Run Playwright tests
+        run: npx playwright test
 
       - name: Run Playwright tests
         run: npx playwright test
