@@ -45,3 +45,7 @@ src/environments/environment.staging.ts
 src/environments/environment.development.ts
 .env
 dist
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
