@@ -69,14 +69,14 @@ export class UrlTokenService {
    * Stores recovery tokens in session storage
    */
   storeRecoveryTokens(tokens: RecoveryTokens): void {
-    sessionStorage.setItem('recoveryTokens', JSON.stringify(tokens));
+    localStorage.setItem('recoveryTokens', JSON.stringify(tokens));
   }
 
   /**
    * Retrieves recovery tokens from session storage
    */
   getStoredRecoveryTokens(): RecoveryTokens | null {
-    const stored = sessionStorage.getItem('recoveryTokens');
+    const stored = localStorage.getItem('recoveryTokens');
     if (!stored) {
       return null;
     }
@@ -85,7 +85,7 @@ export class UrlTokenService {
       return JSON.parse(stored);
     } catch {
       // Invalid JSON, remove it
-      sessionStorage.removeItem('recoveryTokens');
+      localStorage.removeItem('recoveryTokens');
       return null;
     }
   }
@@ -94,7 +94,7 @@ export class UrlTokenService {
    * Clears recovery tokens from session storage
    */
   clearRecoveryTokens(): void {
-    sessionStorage.removeItem('recoveryTokens');
+    localStorage.removeItem('recoveryTokens');
   }
 
   /**

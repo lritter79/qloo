@@ -117,9 +117,9 @@ export class AuthService {
    */
   setAuthTokens(tokens: AuthTokens): Observable<User> {
     // Store tokens in session storage
-    sessionStorage.setItem(this.ACCESS_TOKEN_KEY, tokens.accessToken);
-    sessionStorage.setItem(this.REFRESH_TOKEN_KEY, tokens.refreshToken);
-    sessionStorage.setItem(this.EXPIRES_AT_KEY, tokens.expiresAt.toString());
+    localStorage.setItem(this.ACCESS_TOKEN_KEY, tokens.accessToken);
+    localStorage.setItem(this.REFRESH_TOKEN_KEY, tokens.refreshToken);
+    localStorage.setItem(this.EXPIRES_AT_KEY, tokens.expiresAt.toString());
 
     // Update auth state
     this.isAuthenticatedSubject.next(true);
@@ -134,7 +134,7 @@ export class AuthService {
       .pipe(
         tap((response) => {
           // Store user data
-          sessionStorage.setItem(this.USER_KEY, JSON.stringify(response.user));
+          localStorage.setItem(this.USER_KEY, JSON.stringify(response.user));
 
           // Create a mock session object for consistency
           const session: Session = {
@@ -149,7 +149,7 @@ export class AuthService {
             token_type: 'bearer',
             user: response.user,
           };
-          sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
+          localStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
 
           // Update reactive state
           this.currentUserSubject.next(response.user);
@@ -291,14 +291,14 @@ export class AuthService {
    * Get access token
    */
   getAccessToken(): string | null {
-    return sessionStorage.getItem(this.ACCESS_TOKEN_KEY);
+    return localStorage.getItem(this.ACCESS_TOKEN_KEY);
   }
 
   /**
    * Get refresh token
    */
   getRefreshToken(): string | null {
-    return sessionStorage.getItem(this.REFRESH_TOKEN_KEY);
+    return localStorage.getItem(this.REFRESH_TOKEN_KEY);
   }
 
   clearAuthError() {
@@ -310,8 +310,8 @@ export class AuthService {
    */
   private initializeFromStorage(): void {
     try {
-      const storedUser = sessionStorage.getItem(this.USER_KEY);
-      const accessToken = sessionStorage.getItem(this.ACCESS_TOKEN_KEY);
+      const storedUser = localStorage.getItem(this.USER_KEY);
+      const accessToken = localStorage.getItem(this.ACCESS_TOKEN_KEY);
 
       if (storedUser && accessToken && this.hasValidToken()) {
         const user = JSON.parse(storedUser) as User;
@@ -333,7 +333,7 @@ export class AuthService {
    * Check if current token is valid (not expired)
    */
   private hasValidToken(): boolean {
-    const expiresAt = sessionStorage.getItem(this.EXPIRES_AT_KEY);
+    const expiresAt = localStorage.getItem(this.EXPIRES_AT_KEY);
     if (!expiresAt) return false;
 
     const expirationTime = parseInt(expiresAt, 10) * 1000; // Convert to milliseconds
@@ -345,19 +345,16 @@ export class AuthService {
    */
   private handleAuthSuccess(response: AuthResponse): void {
     // Store user data
-    sessionStorage.setItem(this.USER_KEY, JSON.stringify(response.user));
-    sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(response.session));
+    localStorage.setItem(this.USER_KEY, JSON.stringify(response.user));
+    localStorage.setItem(this.SESSION_KEY, JSON.stringify(response.session));
 
     // Store tokens and expiration
-    sessionStorage.setItem(
-      this.ACCESS_TOKEN_KEY,
-      response.session.access_token
-    );
-    sessionStorage.setItem(
+    localStorage.setItem(this.ACCESS_TOKEN_KEY, response.session.access_token);
+    localStorage.setItem(
       this.REFRESH_TOKEN_KEY,
       response.session.refresh_token
     );
-    sessionStorage.setItem(
+    localStorage.setItem(
       this.EXPIRES_AT_KEY,
       response.session.expires_at.toString()
     );
@@ -385,11 +382,11 @@ export class AuthService {
    * Clear all auth data from session storage
    */
   private clearStorage(): void {
-    sessionStorage.removeItem(this.USER_KEY);
-    sessionStorage.removeItem(this.SESSION_KEY);
-    sessionStorage.removeItem(this.ACCESS_TOKEN_KEY);
-    sessionStorage.removeItem(this.REFRESH_TOKEN_KEY);
-    sessionStorage.removeItem(this.EXPIRES_AT_KEY);
+    localStorage.removeItem(this.USER_KEY);
+    localStorage.removeItem(this.SESSION_KEY);
+    localStorage.removeItem(this.ACCESS_TOKEN_KEY);
+    localStorage.removeItem(this.REFRESH_TOKEN_KEY);
+    localStorage.removeItem(this.EXPIRES_AT_KEY);
   }
 
   /**
@@ -417,7 +414,7 @@ export class AuthService {
       refreshTime = (expiresIn - 300) * 1000;
     } else {
       // Calculate from stored expiration time
-      const expiresAt = sessionStorage.getItem(this.EXPIRES_AT_KEY);
+      const expiresAt = localStorage.getItem(this.EXPIRES_AT_KEY);
       if (expiresAt) {
         const expirationTime = parseInt(expiresAt, 10) * 1000;
         const now = Date.now();

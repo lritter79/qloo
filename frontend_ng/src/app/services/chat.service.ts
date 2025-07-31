@@ -198,7 +198,7 @@ export class ChatService {
   }
 
   getAccessToken(): string | null {
-    return sessionStorage.getItem(this.ACCESS_TOKEN_KEY);
+    return localStorage.getItem(this.ACCESS_TOKEN_KEY);
   }
 
   private generateId(): string {
