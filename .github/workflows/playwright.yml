@@ -27,7 +27,7 @@ jobs:
         run: npm run build # only if needed
 
       - name: Start Angular app
-        run: ng serve --host 0.0.0.0 --port 4200
+        run: npx ng serve --host 0.0.0.0 --port 4200
         env:
           CI: true
 
