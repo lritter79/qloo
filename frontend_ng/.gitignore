@@ -46,7 +46,6 @@ src/environments/environment.development.ts
 .env
 dist
 
-# Playwright
 node_modules/
 /test-results/
 /playwright-report/
