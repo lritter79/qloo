@@ -92,6 +92,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script_stop: true
           script: |
+            echo "start" > /tmp/debug-start.log
             set -euxo pipefail
 
             LOG_FILE="/tmp/deploy-$(date +%s).log"
