@@ -191,7 +191,7 @@ jobs:
             WorkingDirectory=$APP_DIR
             Environment=PATH=$APP_DIR/venv/bin
             EnvironmentFile=$APP_DIR/.env
-            ExecStart=$APP_DIR/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 4
+            ExecStart=$APP_DIR/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
             Restart=always
             RestartSec=3
 
@@ -205,24 +205,48 @@ jobs:
             sudo systemctl restart fastapi-app
             sudo systemctl reload nginx
 
-            # Wait a moment and check if services are running
+            # Wait for services to start and check if they're running
+            echo "Waiting for FastAPI to start..."
+            sleep 10
+
+            # Check if FastAPI service is running
+            if ! sudo systemctl is-active --quiet fastapi-app; then
+              echo "FastAPI service failed to start!"
+              sudo journalctl -u fastapi-app --no-pager -n 20
+              exit 1
+            fi
+
+            # Wait a bit more for the service to be ready
             sleep 5
 
-            # Health check
-            for i in {1..5}; do
-              if curl -f http://localhost/health > /dev/null 2>&1; then
-                echo "Deployment successful!"
-                exit 0
+            # Health check - try direct FastAPI first, then through Nginx
+            echo "Testing FastAPI health endpoint directly..."
+            if ! curl -f http://localhost:8000/health > /dev/null 2>&1; then
+              echo "Direct FastAPI health check failed!"
+              echo "FastAPI service status:"
+              sudo systemctl status fastapi-app
+              echo "FastAPI logs:"
+              sudo journalctl -u fastapi-app --no-pager -n 20
+              exit 1
+            fi
+
+            echo "Testing health endpoint through Nginx..."
+            if ! curl -f http://localhost/health > /dev/null 2>&1; then
+              echo "Health check failed! Rolling back..."
+
+              # Stop new services
+              sudo systemctl stop fastapi-app
+
+              # Restore backup if it exists
+              if [ -d "$BACKUP_DIR" ]; then
+                sudo rm -rf $APP_DIR
+                sudo mv $BACKUP_DIR $APP_DIR
+                sudo systemctl restart fastapi-app
+                sudo systemctl reload nginx
               fi
-              echo "Health check failed, retrying in 5s..."
-              sleep 5
-            done
-            echo "Health check failed after 5 attempts! Rolling back..."
-            sudo systemctl stop fastapi-app
-            sudo mv $BACKUP_DIR $APP_DIR
-            sudo systemctl restart fastapi-app
-            sudo systemctl reload nginx
-            exit 1
+
+              exit 1
+            fi
 
             echo "Deployment successful!"
 

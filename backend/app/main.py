@@ -12,6 +12,8 @@ if env == "production":
         "https://www.levon-ritter-qloo-hackathon.com",
         "https://prod.levon-ritter-qloo-hackathon.com",
         "https://www.prod.levon-ritter-qloo-hackathon.com",
+        "http://localhost",  # Add this for health checks
+        "http://127.0.0.1",  # Add this too
     ]
 elif env == "staging":
     allowed_origins = [
