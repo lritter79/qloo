@@ -90,50 +90,96 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
           script: |
+            set -e  # Exit on any error
+            echo "=== Starting deployment process ==="
+            set -e  # Exit on any error
+            echo "=== Starting deployment process ==="
+
             # Set variables
             APP_DIR="/var/www/app"
             BACKUP_DIR="/var/www/backup-$(date +%Y%m%d-%H%M%S)"
 
+            echo "=== Step 1: Creating backup ==="
             # Create backup of current deployment
             if [ -d "$APP_DIR" ]; then
-              echo "Creating backup..."
-              sudo cp -r $APP_DIR $BACKUP_DIR
+                echo "Creating backup at $BACKUP_DIR..."
+                sudo cp -r $APP_DIR $BACKUP_DIR
+                echo "Backup created successfully"
+            else
+                echo "No existing app directory to backup"
             fi
 
+            echo "=== Step 2: Downloading deployment ==="
             # Download latest deployment
             cd /tmp
-            aws s3 cp s3://${{ secrets.S3_DEPLOYMENT_BUCKET }}/deployments/latest.tar.gz ./
+            echo "Downloading from S3..."
+            if ! aws s3 cp s3://${{ secrets.S3_DEPLOYMENT_BUCKET }}/deployments/latest.tar.gz ./; then
+                echo "ERROR: Failed to download from S3"
+                exit 1
+            fi
+            echo "Download successful"
 
+            echo "=== Step 3: Extracting and setting up files ==="
             # Extract and deploy
             sudo mkdir -p $APP_DIR
-            sudo tar -xzf latest.tar.gz -C $APP_DIR
+            if ! sudo tar -xzf latest.tar.gz -C $APP_DIR; then
+                echo "ERROR: Failed to extract deployment archive"
+                exit 1
+            fi
+            echo "Extraction successful"
 
             # Set permissions
             sudo chown -R www-data:www-data $APP_DIR
             sudo chmod -R 755 $APP_DIR
+            echo "Permissions set successfully"
 
+            echo "=== Step 4: Creating environment file ==="
+
+            echo "=== Step 4: Creating environment file ==="
             # Create production environment file
-            sudo tee $APP_DIR/.env > /dev/null << EOF
-            SUPABASE_URL=\${{ secrets.SUPABASE_URL }}
-            SUPABASE_KEY=\${{ secrets.SUPABASE_KEY }}
-            SUPABASE_JWT_SECRET=\${{ secrets.SUPABASE_JWT_SECRET }}
-            SUPABASE_SERVICE_ROLE=\${{ secrets.SUPABASE_SERVICE_ROLE }}
-            FRONTEND_URL=\${{ secrets.FRONTEND_URL }}
-            QLOO_API_KEY=\${{ secrets.QLOO_API_KEY }}
-            OPEN_AI_API_KEY=\${{ secrets.OPEN_AI_API_KEY }}
-            GRAYSWAN_KEY=\${{ secrets.GRAYSWAN_KEY }}
+            if ! sudo tee $APP_DIR/.env > /dev/null << EOF
+            DATABASE_URL=${{ secrets.SUPABASE_DATABASE_URL }}
+            SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+            SUPABASE_KEY=${{ secrets.SUPABASE_ANON_KEY }}
             ENVIRONMENT=production
             PYTHONPATH=$APP_DIR
+            # Your additional environment variables
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            REDIS_URL=${{ secrets.REDIS_URL }}
+            EMAIL_API_KEY=${{ secrets.EMAIL_API_KEY }}
+            STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
+            # Add more as needed...
             EOF
+            then
+                echo "ERROR: Failed to create environment file"
+                exit 1
+            fi
+            echo "Environment file created successfully"
 
+            echo "=== Step 5: Setting up Python virtual environment ==="
             # Install Python dependencies in virtual environment
             cd $APP_DIR
-            sudo python3 -m venv venv
-            sudo ./venv/bin/pip install -r requirements.txt
+            if ! sudo python3 -m venv venv; then
+                echo "ERROR: Failed to create virtual environment"
+                exit 1
+            fi
+            echo "Virtual environment created"
 
+            if ! sudo ./venv/bin/pip install -r requirements.txt; then
+                echo "ERROR: Failed to install Python dependencies"
+                echo "Contents of requirements.txt:"
+                cat requirements.txt
+                exit 1
+            fi
+            echo "Python dependencies installed successfully"
+
+            echo "=== Step 6: Configuring Nginx ==="
+
+            echo "=== Step 6: Configuring Nginx ==="
             # Update Nginx configuration
-            sudo tee /etc/nginx/sites-available/app > /dev/null << 'EOF'
+            if ! sudo tee /etc/nginx/sites-available/app > /dev/null << 'EOF'
             server {
                 listen 80;
                 server_name _;
@@ -170,16 +216,28 @@ jobs:
                 }
             }
             EOF
+            then
+                echo "ERROR: Failed to create Nginx configuration"
+                exit 1
+            fi
+            echo "Nginx configuration created successfully"
 
             # Enable the site
             sudo ln -sf /etc/nginx/sites-available/app /etc/nginx/sites-enabled/
             sudo rm -f /etc/nginx/sites-enabled/default
 
             # Test Nginx configuration
-            sudo nginx -t
+            if ! sudo nginx -t; then
+                echo "ERROR: Nginx configuration test failed"
+                exit 1
+            fi
+            echo "Nginx configuration is valid"
 
+            echo "=== Step 7: Creating systemd service ==="
+
+            echo "=== Step 7: Creating systemd service ==="
             # Create systemd service for FastAPI
-            sudo tee /etc/systemd/system/fastapi-app.service > /dev/null << EOF
+            if ! sudo tee /etc/systemd/system/fastapi-app.service > /dev/null << EOF
             [Unit]
             Description=FastAPI App
             After=network.target
@@ -191,30 +249,61 @@ jobs:
             WorkingDirectory=$APP_DIR
             Environment=PATH=$APP_DIR/venv/bin
             EnvironmentFile=$APP_DIR/.env
-            ExecStart=$APP_DIR/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
+            ExecStart=$APP_DIR/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --workers 1
             Restart=always
             RestartSec=3
+            StandardOutput=journal
+            StandardError=journal
 
             [Install]
             WantedBy=multi-user.target
             EOF
+            then
+                echo "ERROR: Failed to create systemd service"
+                exit 1
+            fi
+            echo "Systemd service created successfully"
 
+            echo "=== Step 8: Starting services ==="
             # Reload systemd and restart services
             sudo systemctl daemon-reload
             sudo systemctl enable fastapi-app
-            sudo systemctl restart fastapi-app
-            sudo systemctl reload nginx
 
+            if ! sudo systemctl restart fastapi-app; then
+                echo "ERROR: Failed to start FastAPI service"
+                echo "Service status:"
+                sudo systemctl status fastapi-app
+                echo "Service logs:"
+                sudo journalctl -u fastapi-app --no-pager -n 20
+                exit 1
+            fi
+            echo "FastAPI service started successfully"
+
+            if ! sudo systemctl reload nginx; then
+                echo "ERROR: Failed to reload Nginx"
+                echo "Nginx status:"
+                sudo systemctl status nginx
+                exit 1
+            fi
+            echo "Nginx reloaded successfully"
+
+            echo "=== Step 9: Health checks ==="
+
+            echo "=== Step 9: Health checks ==="
             # Wait for services to start and check if they're running
             echo "Waiting for FastAPI to start..."
             sleep 10
 
             # Check if FastAPI service is running
             if ! sudo systemctl is-active --quiet fastapi-app; then
-              echo "FastAPI service failed to start!"
-              sudo journalctl -u fastapi-app --no-pager -n 20
-              exit 1
+                echo "ERROR: FastAPI service is not running!"
+                echo "Service status:"
+                sudo systemctl status fastapi-app
+                echo "Service logs:"
+                sudo journalctl -u fastapi-app --no-pager -n 30
+                exit 1
             fi
+            echo "FastAPI service is running"
 
             # Wait a bit more for the service to be ready
             sleep 5
@@ -222,33 +311,47 @@ jobs:
             # Health check - try direct FastAPI first, then through Nginx
             echo "Testing FastAPI health endpoint directly..."
             if ! curl -f http://localhost:8000/health > /dev/null 2>&1; then
-              echo "Direct FastAPI health check failed!"
-              echo "FastAPI service status:"
-              sudo systemctl status fastapi-app
-              echo "FastAPI logs:"
-              sudo journalctl -u fastapi-app --no-pager -n 20
-              exit 1
+                echo "ERROR: Direct FastAPI health check failed!"
+                echo "FastAPI service status:"
+                sudo systemctl status fastapi-app
+                echo "FastAPI logs:"
+                sudo journalctl -u fastapi-app --no-pager -n 30
+                echo "Network connections:"
+                sudo netstat -tlnp | grep 8000
+                exit 1
             fi
+            echo "Direct FastAPI health check passed"
 
             echo "Testing health endpoint through Nginx..."
             if ! curl -f http://localhost/health > /dev/null 2>&1; then
-              echo "Health check failed! Rolling back..."
-
-              # Stop new services
-              sudo systemctl stop fastapi-app
-
-              # Restore backup if it exists
-              if [ -d "$BACKUP_DIR" ]; then
+                echo "ERROR: Nginx health check failed!"
+                echo "Nginx status:"
+                sudo systemctl status nginx
+                echo "Nginx error log:"
+                sudo tail -n 20 /var/log/nginx/error.log
+                echo "Nginx access log:"
+                sudo tail -n 20 /var/log/nginx/access.log
+                
+                echo "Rolling back deployment..."
+                
+                # Stop new services
+                sudo systemctl stop fastapi-app
+                
+                # Restore backup if it exists
+                if [ -d "$BACKUP_DIR" ]; then
                 sudo rm -rf $APP_DIR
                 sudo mv $BACKUP_DIR $APP_DIR
                 sudo systemctl restart fastapi-app
                 sudo systemctl reload nginx
-              fi
-
-              exit 1
+                echo "Rollback completed"
+                fi
+                
+                exit 1
             fi
+            echo "Nginx health check passed"
 
-            echo "Deployment successful!"
+            echo "=== Deployment successful! ==="
 
             # Clean up old backups (keep last 3)
-            ls -t /var/www/backup-* | tail -n +4 | sudo xargs rm -rf 2>/dev/null || true
+            ls -t /var/www/backup-* 2>/dev/null | tail -n +4 | sudo xargs rm -rf 2>/dev/null || true
+            echo "Old backups cleaned up"
