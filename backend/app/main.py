@@ -2,14 +2,16 @@ import os
 from fastapi import FastAPI
 from app.routers import users, qloo, chat
 from fastapi.middleware.cors import CORSMiddleware
-
+from datetime import datetime
 env = os.getenv("ENVIRONMENT", default="development")
 
 # Set origins based on environment
 if env == "production":
     allowed_origins = [
-        "https://yourdomain.com",
-        "https://www.yourdomain.com",
+        "https://levon-ritter-qloo-hackathon.com",
+        "https://www.levon-ritter-qloo-hackathon.com",
+        "https://prod.levon-ritter-qloo-hackathon.com",
+        "https://www.prod.levon-ritter-qloo-hackathon.com",
     ]
 elif env == "staging":
     allowed_origins = [
@@ -36,3 +38,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
