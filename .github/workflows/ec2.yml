@@ -47,27 +47,23 @@ jobs:
           # Copy built frontend files
           cp -r frontend_ng/dist/frontend deployment/static/
 
-          # Copy deployment scripts
-          cp deploy.sh deployment/
-          cp devDeploy.sh deployment/
 
           # Create production environment file template
           cat > deployment/.env.production << EOF
           # Production Environment Variables
           # These will be replaced by actual values on EC2
-    
-          ENVIRONMENT=\${{ secrets.ENVIRONMENT }}
-            SUPABASE_URL=\${{ secrets.SUPABASE_URL }}
-            SUPABASE_KEY=\${{ secrets.SUPABASE_KEY }}
-            SUPABASE_JWT_SECRET=\${{ secrets.SUPABASE_JWT_SECRET }}
-            SUPABASE_SERVICE_ROLE=\${{ secrets.SUPABASE_SERVICE_ROLE }}
-            FRONTEND_URL=\${{ secrets.FRONTEND_URL }}
-            QLOO_API_KEY=\${{ secrets.QLOO_API_KEY }}
-            OPEN_AI_API_KEY=\${{ secrets.OPEN_AI_API_KEY }}
-            GRAYSWAN_KEY=\${{ secrets.GRAYSWAN_KEY }}
-
 
           ENVIRONMENT=production
+          SUPABASE_URL=\${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY=\${{ secrets.SUPABASE_KEY }}
+          SUPABASE_JWT_SECRET=\${{ secrets.SUPABASE_JWT_SECRET }}
+          SUPABASE_SERVICE_ROLE=\${{ secrets.SUPABASE_SERVICE_ROLE }}
+          FRONTEND_URL=\${{ secrets.FRONTEND_URL }}
+          QLOO_API_KEY=\${{ secrets.QLOO_API_KEY }}
+          OPEN_AI_API_KEY=\${{ secrets.OPEN_AI_API_KEY }}
+          GRAYSWAN_KEY=\${{ secrets.GRAYSWAN_KEY }}
+
+
           EOF
 
       - name: Configure AWS Credentials
@@ -119,9 +115,14 @@ jobs:
 
             # Create production environment file
             sudo tee $APP_DIR/.env > /dev/null << EOF
-            DATABASE_URL=${{ secrets.SUPABASE_DATABASE_URL }}
-            SUPABASE_URL=${{ secrets.SUPABASE_URL }}
-            SUPABASE_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+            SUPABASE_URL=\${{ secrets.SUPABASE_URL }}
+            SUPABASE_KEY=\${{ secrets.SUPABASE_KEY }}
+            SUPABASE_JWT_SECRET=\${{ secrets.SUPABASE_JWT_SECRET }}
+            SUPABASE_SERVICE_ROLE=\${{ secrets.SUPABASE_SERVICE_ROLE }}
+            FRONTEND_URL=\${{ secrets.FRONTEND_URL }}
+            QLOO_API_KEY=\${{ secrets.QLOO_API_KEY }}
+            OPEN_AI_API_KEY=\${{ secrets.OPEN_AI_API_KEY }}
+            GRAYSWAN_KEY=\${{ secrets.GRAYSWAN_KEY }}
             ENVIRONMENT=production
             PYTHONPATH=$APP_DIR
             EOF
