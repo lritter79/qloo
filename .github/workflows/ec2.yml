@@ -209,22 +209,20 @@ jobs:
             sleep 5
 
             # Health check
-            if ! curl -f http://localhost/health > /dev/null 2>&1; then
-              echo "Health check failed! Rolling back..."
-              
-              # Stop new services
-              sudo systemctl stop fastapi-app
-              
-              # Restore backup if it exists
-              if [ -d "$BACKUP_DIR" ]; then
-                sudo rm -rf $APP_DIR
-                sudo mv $BACKUP_DIR $APP_DIR
-                sudo systemctl restart fastapi-app
-                sudo systemctl reload nginx
+            for i in {1..5}; do
+              if curl -f http://localhost/health > /dev/null 2>&1; then
+                echo "Deployment successful!"
+                exit 0
               fi
-              
-              exit 1
-            fi
+              echo "Health check failed, retrying in 5s..."
+              sleep 5
+            done
+            echo "Health check failed after 5 attempts! Rolling back..."
+            sudo systemctl stop fastapi-app
+            sudo mv $BACKUP_DIR $APP_DIR
+            sudo systemctl restart fastapi-app
+            sudo systemctl reload nginx
+            exit 1
 
             echo "Deployment successful!"
 
