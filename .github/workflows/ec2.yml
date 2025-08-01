@@ -1,0 +1,231 @@
+name: Deploy to AWS EC2
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.19"
+          cache: "npm"
+          cache-dependency-path: frontend_ng/package-lock.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Build Angular Frontend
+        run: |
+          cd frontend_ng
+          npm ci
+          npm run build:prod
+
+      - name: Install Python Dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Create Deployment Package
+        run: |
+          # Create deployment directory
+          mkdir -p deployment
+
+          # Copy backend files
+          cp -r backend/* deployment/
+
+          # Copy built frontend files
+          cp -r frontend_ng/dist/frontend deployment/static/
+
+          # Copy deployment scripts
+          cp deploy.sh deployment/
+          cp devDeploy.sh deployment/
+
+          # Create production environment file template
+          cat > deployment/.env.production << EOF
+          # Production Environment Variables
+          # These will be replaced by actual values on EC2
+    
+          ENVIRONMENT=\${{ secrets.ENVIRONMENT }}
+            SUPABASE_URL=\${{ secrets.SUPABASE_URL }}
+            SUPABASE_KEY=\${{ secrets.SUPABASE_KEY }}
+            SUPABASE_JWT_SECRET=\${{ secrets.SUPABASE_JWT_SECRET }}
+            SUPABASE_SERVICE_ROLE=\${{ secrets.SUPABASE_SERVICE_ROLE }}
+            FRONTEND_URL=\${{ secrets.FRONTEND_URL }}
+            QLOO_API_KEY=\${{ secrets.QLOO_API_KEY }}
+            OPEN_AI_API_KEY=\${{ secrets.OPEN_AI_API_KEY }}
+            GRAYSWAN_KEY=\${{ secrets.GRAYSWAN_KEY }}
+
+
+          ENVIRONMENT=production
+          EOF
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Create Deployment Archive
+        run: |
+          cd deployment
+          tar -czf ../deployment.tar.gz .
+          cd ..
+
+      - name: Upload to S3
+        run: |
+          aws s3 cp deployment.tar.gz s3://${{ secrets.S3_DEPLOYMENT_BUCKET }}/deployments/deployment-$(date +%Y%m%d-%H%M%S).tar.gz
+          aws s3 cp deployment.tar.gz s3://${{ secrets.S3_DEPLOYMENT_BUCKET }}/deployments/latest.tar.gz
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Set variables
+            APP_DIR="/var/www/app"
+            BACKUP_DIR="/var/www/backup-$(date +%Y%m%d-%H%M%S)"
+
+            # Create backup of current deployment
+            if [ -d "$APP_DIR" ]; then
+              echo "Creating backup..."
+              sudo cp -r $APP_DIR $BACKUP_DIR
+            fi
+
+            # Download latest deployment
+            cd /tmp
+            aws s3 cp s3://${{ secrets.S3_DEPLOYMENT_BUCKET }}/deployments/latest.tar.gz ./
+
+            # Extract and deploy
+            sudo mkdir -p $APP_DIR
+            sudo tar -xzf latest.tar.gz -C $APP_DIR
+
+            # Set permissions
+            sudo chown -R www-data:www-data $APP_DIR
+            sudo chmod -R 755 $APP_DIR
+
+            # Create production environment file
+            sudo tee $APP_DIR/.env > /dev/null << EOF
+            DATABASE_URL=${{ secrets.SUPABASE_DATABASE_URL }}
+            SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+            SUPABASE_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+            ENVIRONMENT=production
+            PYTHONPATH=$APP_DIR
+            EOF
+
+            # Install Python dependencies in virtual environment
+            cd $APP_DIR
+            sudo python3 -m venv venv
+            sudo ./venv/bin/pip install -r requirements.txt
+
+            # Update Nginx configuration
+            sudo tee /etc/nginx/sites-available/app > /dev/null << 'EOF'
+            server {
+                listen 80;
+                server_name _;
+                
+                # Serve Angular static files
+                location / {
+                    root /var/www/app/static;
+                    try_files \$uri \$uri/ /index.html;
+                    
+                    # Cache static assets
+                    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+                        expires 1y;
+                        add_header Cache-Control "public, immutable";
+                    }
+                }
+                
+                # Proxy API requests to FastAPI
+                location /api/ {
+                    proxy_pass http://127.0.0.1:8000/;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto \$scheme;
+                    
+                    # WebSocket support (if needed)
+                    proxy_http_version 1.1;
+                    proxy_set_header Upgrade \$http_upgrade;
+                    proxy_set_header Connection "upgrade";
+                }
+                
+                # Health check endpoint
+                location /health {
+                    proxy_pass http://127.0.0.1:8000/health;
+                }
+            }
+            EOF
+
+            # Enable the site
+            sudo ln -sf /etc/nginx/sites-available/app /etc/nginx/sites-enabled/
+            sudo rm -f /etc/nginx/sites-enabled/default
+
+            # Test Nginx configuration
+            sudo nginx -t
+
+            # Create systemd service for FastAPI
+            sudo tee /etc/systemd/system/fastapi-app.service > /dev/null << EOF
+            [Unit]
+            Description=FastAPI App
+            After=network.target
+
+            [Service]
+            Type=exec
+            User=www-data
+            Group=www-data
+            WorkingDirectory=$APP_DIR
+            Environment=PATH=$APP_DIR/venv/bin
+            EnvironmentFile=$APP_DIR/.env
+            ExecStart=$APP_DIR/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 4
+            Restart=always
+            RestartSec=3
+
+            [Install]
+            WantedBy=multi-user.target
+            EOF
+
+            # Reload systemd and restart services
+            sudo systemctl daemon-reload
+            sudo systemctl enable fastapi-app
+            sudo systemctl restart fastapi-app
+            sudo systemctl reload nginx
+
+            # Wait a moment and check if services are running
+            sleep 5
+
+            # Health check
+            if ! curl -f http://localhost/health > /dev/null 2>&1; then
+              echo "Health check failed! Rolling back..."
+              
+              # Stop new services
+              sudo systemctl stop fastapi-app
+              
+              # Restore backup if it exists
+              if [ -d "$BACKUP_DIR" ]; then
+                sudo rm -rf $APP_DIR
+                sudo mv $BACKUP_DIR $APP_DIR
+                sudo systemctl restart fastapi-app
+                sudo systemctl reload nginx
+              fi
+              
+              exit 1
+            fi
+
+            echo "Deployment successful!"
+
+            # Clean up old backups (keep last 3)
+            ls -t /var/www/backup-* | tail -n +4 | sudo xargs rm -rf 2>/dev/null || true
